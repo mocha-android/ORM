@@ -11,11 +11,17 @@ public class Model {
 
 	long primaryKey = 0;
 
+	public Model() {
+
+	}
+
 	static Field getPrimaryKeyField() {
 		try {
-			return Model.class.getField("primaryKey");
-		} catch (NoSuchFieldException e) {
-			return null;
+			return Model.class.getDeclaredField("primaryKey");
+		} catch (RuntimeException e) {
+			throw e;
+		} catch (Exception e) {
+			throw new RuntimeException(e);
 		}
 	}
 

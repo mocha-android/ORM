@@ -5,5 +5,18 @@
  */
 package mocha.orm;
 
-public class Relationship {
+public class Relationship <E extends Model> {
+
+	public static class HasOne <E> extends Relationship {
+
+	}
+
+	public static class HasMany <E> extends Relationship {
+
+	}
+
+	public static class BelongsTo <E> extends Relationship {
+
+	}
+
 }

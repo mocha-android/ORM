@@ -8,8 +8,8 @@ package mocha.orm;
 import android.app.Application;
 import android.database.Cursor;
 import android.database.SQLException;
-import android.database.sqlite.SQLiteDatabase;
-import android.database.sqlite.SQLiteStatement;
+import android.database.sqlite.*;
+import mocha.foundation.MObject;
 
 import java.lang.reflect.Field;
 import java.util.HashMap;
@@ -112,7 +112,12 @@ public class Store {
 
 	SQLiteDatabase getDatabase() {
 		if(this.database == null) {
-			this.database = SQLiteDatabase.openOrCreateDatabase(this.databasePath, null);
+			this.database = SQLiteDatabase.openOrCreateDatabase(this.databasePath, new SQLiteDatabase.CursorFactory() {
+				public Cursor newCursor(SQLiteDatabase db, SQLiteCursorDriver masterQuery, String editTable, SQLiteQuery query) {
+					MObject.MLog(MObject.LogLevel.WTF, "SQL: " + query.toString());
+					return new SQLiteCursor(db, masterQuery, editTable, query);
+				}
+			});
 			this.database.setForeignKeyConstraintsEnabled(true);
 
 			SQLiteStatement tableExistsStatement = this.compileStatement("SELECT COUNT(*) FROM \"sqlite_master\" WHERE \"type\" = ? AND \"name\" = ?");
@@ -140,32 +145,41 @@ public class Store {
 			throw new RuntimeException(e);
 		}
 
-		Class type = value.getClass();
+
+		Class type = value != null ? value.getClass() : null;
 
 		Transformer transformer = this.getTransformer(field);
-		if(transformer != null) {
+		if(transformer != null && value != null) {
 			type = transformer.getTransformedValueClass();
 			//noinspection unchecked
 			value = transformer.getTransformedValue(value);
 		}
 
-		if(type == Integer.class || type == int.class || type == Long.class || type == long.class || type == Boolean.class || type == boolean.class) {
-			statement.bindLong(index, (Long)value);
-		} else if(type == Float.class || type == float.class || type == Double.class || type == double.class) {
-			statement.bindDouble(index, (Double)value);
+		if(value == null) {
+			statement.bindNull(index);
+		} else if(type == Integer.class || type == int.class) {
+			statement.bindLong(index, ((Integer)value).longValue());
+		} else if(type == Long.class || type == long.class) {
+			statement.bindLong(index, (Long) value);
+		} else if(type == Boolean.class || type == boolean.class) {
+			statement.bindLong(index, ((Boolean) value) ? 1L : 0L);
+		} else if(type == Float.class || type == float.class) {
+			statement.bindDouble(index, ((Float) value).doubleValue());
+		} else if(type == Double.class || type == double.class) {
+			statement.bindDouble(index, (Double) value);
 		} else if(type == String.class) {
-			statement.bindString(index, (String)value);
+			statement.bindString(index, (String) value);
 		} else if(type == Character.class) {
 			statement.bindString(index, value.toString());
 		} else if(type == byte[].class) {
-			statement.bindBlob(index, (byte[])value);
+			statement.bindBlob(index, (byte[]) value);
 		} else if(value instanceof Model) {
-			statement.bindLong(index, ((Model)value).primaryKey);
+			statement.bindLong(index, ((Model) value).primaryKey);
 		} else if(value instanceof Enum) {
 			statement.bindString(index, ((Enum)value).name());
+		} else {
+			throw new RuntimeException("Could not determine column type for field \"" + field.getName() + "\" of type \"" + type + "\" with value \"" + value + "\".");
 		}
-
-		throw new RuntimeException("Could not determine column type for field " + field.getName() + " of type " + type);
 	}
 
 	ColumnType getColumnType(Field field) {
@@ -189,56 +203,51 @@ public class Store {
 			return ColumnType.INTEGER;
 		} else if(type.isEnum()) {
 			return ColumnType.TEXT;
+		} else {
+			throw new RuntimeException("Could not determine column type for field " + field.getName() + " of type " + type);
 		}
-
-		throw new RuntimeException("Could not determine column type for field " + field.getName() + " of type " + type);
 	}
 
-	<E> void setField(E model, Field field, Cursor cursor, int columnIndex) throws IllegalAccessException {
-		Transformer transformer = this.getTransformer(field);
+	<E> void setField(E model, Field field, Cursor cursor, int columnIndex) {
+		try {
+			Transformer transformer = this.getTransformer(field);
 
-		if(transformer != null) {
-			// TODO
-			return;
+			if (transformer != null) {
+				// TODO
+				return;
+			}
+
+			Class type = field.getType();
+
+			if (type == Integer.class || type == int.class) {
+				field.setInt(model, cursor.getInt(columnIndex));
+			} else if (type == Long.class || type == long.class) {
+				field.setLong(model, cursor.getLong(columnIndex));
+			} else if (type == Long.class || type == long.class || type == Boolean.class || type == boolean.class) {
+				field.setBoolean(model, cursor.getInt(columnIndex) == 1);
+			} else if (type == Float.class || type == float.class) {
+				field.setFloat(model, cursor.getFloat(columnIndex));
+			} else if (type == Double.class || type == double.class) {
+				field.setDouble(model, cursor.getDouble(columnIndex));
+			} else if (type == String.class) {
+				field.set(model, cursor.getString(columnIndex));
+			} else if (type == Character.class) {
+				// TODO
+			} else if (type == byte[].class) {
+				field.set(model, cursor.getBlob(columnIndex));
+			} else if (Model.class.isAssignableFrom(type)) {
+				// TODO
+			} else if (type.isEnum()) {
+				field.set(model, Enum.valueOf(type, cursor.getString(columnIndex)));
+			}
+		} catch(IllegalAccessException e) {
+			// This should never actually happen, ModelEntity ensures fields are public
 		}
-
-		Class type = field.getClass();
-
-		if(type == Integer.class || type == int.class) {
-			field.setInt(model, cursor.getInt(columnIndex));
-		} else if(type == Long.class || type == long.class) {
-			field.setLong(model, cursor.getLong(columnIndex));
-		} else if(type == Long.class || type == long.class || type == Boolean.class || type == boolean.class) {
-			field.setBoolean(model, cursor.getInt(columnIndex) == 1);
-		} else if(type == Float.class || type == float.class) {
-			field.setFloat(model, cursor.getFloat(columnIndex));
-		} else if(type == Double.class || type == double.class) {
-			field.setDouble(model, cursor.getDouble(columnIndex));
-		} else if(type == String.class) {
-			field.set(model, cursor.getString(columnIndex));
-		} else if(type == Character.class) {
-			// TODO
-		} else if(type == byte[].class) {
-			field.set(model, cursor.getBlob(columnIndex));
-		} else if(Model.class.isAssignableFrom(type)) {
-			// TODO
-		} else if(type.isEnum()) {
-			field.set(model, Enum.valueOf(type, cursor.getString(columnIndex)));
-		}
-
 	}
 
 	Transformer getTransformer(Field field) {
-		if(field.isAnnotationPresent(Column.class)) {
-			Column column = field.getAnnotation(Column.class);
-
-			if(column != null) {
-				Class<? extends Transformer> transformerClass = column.transformer();
-
-				if(transformerClass != null && transformerClass != Transformer.NONE.class) {
-					return this.transformerInstances.get(transformerClass);
-				}
-			}
+		if(field.isAnnotationPresent(Transformable.class)) {
+			return this.transformerInstances.get(field.getAnnotation(Transformable.class).value());
 		}
 
 		return this.transformers.get(field.getType());

@@ -7,6 +7,7 @@ package mocha.orm;
 
 import android.database.Cursor;
 import mocha.foundation.Copying;
+import mocha.foundation.MObject;
 import mocha.foundation.SortDescriptor;
 
 import java.util.ArrayList;
@@ -33,8 +34,7 @@ class FetchRequestQuery <E extends Model> implements Copying<FetchRequestQuery<E
 	}
 
 	private FetchRequestQuery(FetchRequest<E> fetchRequest, Store store, boolean compile) {
-
-			this.store = store;
+		this.store = store;
 		this.fetchRequest = fetchRequest;
 
 		//noinspection unchecked
@@ -53,13 +53,13 @@ class FetchRequestQuery <E extends Model> implements Copying<FetchRequestQuery<E
 		String[] propertiesToFetch = this.fetchRequest.getPropertiesToFetch();
 		String table = this.modelEntity.getTable();
 
+		List<String> columns = new ArrayList<String>();
+		columns.add(table + "." + ModelEntity.PRIMARY_KEY_COLUMN);
+
+		this.selectedColumns = new ArrayList<String>();
+		this.selectedColumns.add(ModelEntity.PRIMARY_KEY_COLUMN);
+
 		if(propertiesToFetch != null && propertiesToFetch.length > 0) {
-			List<String> columns = new ArrayList<String>();
-			this.selectedColumns = new ArrayList<String>();
-
-			columns.add(table + "." + ModelEntity.PRIMARY_KEY_COLUMN);
-			this.selectedColumns.add(ModelEntity.PRIMARY_KEY_COLUMN);
-
 			for(String property : propertiesToFetch) {
 				String column = this.modelEntity.getColumnForFieldName(property);
 
@@ -68,13 +68,15 @@ class FetchRequestQuery <E extends Model> implements Copying<FetchRequestQuery<E
 					this.selectedColumns.add(column);
 				}
 			}
-
-			String[] array = new String[columns.size()];
-			this.columns = columns.toArray(array);
 		} else {
-			this.columns = new String[] { table + ".*" };
-			this.selectedColumns = null;
+			for(String column : this.modelEntity.getColumns()) {
+				columns.add(table + "." + column);
+				this.selectedColumns.add(column);
+			}
 		}
+
+		String[] array = new String[columns.size()];
+		this.columns = columns.toArray(array);
 
 		// Where clause
 		// TODO
@@ -112,7 +114,8 @@ class FetchRequestQuery <E extends Model> implements Copying<FetchRequestQuery<E
 		String limitString = null;
 
 		if((limit > 0 && limit < Long.MAX_VALUE) || offset > 0) {
-			limitString = String.format("LIMIT %d, %d", limit, offset);
+			limit = limit == 0 ? Long.MAX_VALUE : limit;
+			limitString = String.format("%d, %d", offset, limit);
 		}
 
 		return this.parseCursor(this.store.getDatabase().query(this.distinct, this.table, this.columns, this.selection, this.selectionArgs, this.groupBy, this.having, this.orderBy, limitString));
@@ -120,6 +123,7 @@ class FetchRequestQuery <E extends Model> implements Copying<FetchRequestQuery<E
 
 	private List<E> parseCursor(Cursor cursor) {
 		List<E> list = new ArrayList<E>(cursor.getCount());
+		MObject.MLog(MObject.LogLevel.WTF, "Processing cursor of size: " + cursor.getCount());
 
 		if(cursor.moveToFirst()) {
 			do {
@@ -129,6 +133,8 @@ class FetchRequestQuery <E extends Model> implements Copying<FetchRequestQuery<E
 		}
 
 		cursor.close();
+
+		MObject.MLog(MObject.LogLevel.WTF, "Finished processing cursor.");
 
 		return list;
 	}

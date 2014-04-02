@@ -51,17 +51,20 @@ class ModelEntity <E extends Model> extends MObject {
 		this.fieldNameToColumnMap = new HashMap<String, String>(fieldSize);
 		this.columnToFieldMap = new HashMap<String, Field>(fieldSize);
 
+		// NOTE: PRIMARY_KEY_COLUMN is intentionally not added to this.columns
+		// because it's always used separately for things such as SELECT and UPDATE,
+		// adding it would cause it to be queried on twice.
+
+		this.fieldNameToColumnMap.put(PRIMARY_KEY_FIELD.getName(), PRIMARY_KEY_COLUMN);
+		this.fieldToColumnMap.put(PRIMARY_KEY_FIELD, PRIMARY_KEY_COLUMN);
+		this.columnToFieldMap.put(PRIMARY_KEY_COLUMN, PRIMARY_KEY_FIELD);
+
 		for (Field field : fields) {
 			if (!Modifier.isPublic(field.getModifiers())) continue;
 			if (field.isAnnotationPresent(Transient.class)) continue;
 
-			if (field.isAnnotationPresent(Column.class)) {
-				Column column = field.getAnnotation(Column.class);
-				Class<? extends Transformer> transformer = column.transformer();
-
-				if(transformer != null && transformer != Transformer.NONE.class) {
-					this.store.registerTransformer(transformer);
-				}
+			if (field.isAnnotationPresent(Transformable.class)) {
+				this.store.registerTransformer(field.getAnnotation(Transformable.class).value());
 			}
 
 			String fieldName = field.getName();
@@ -72,7 +75,6 @@ class ModelEntity <E extends Model> extends MObject {
 			this.fieldNameToColumnMap.put(fieldName, column);
 			this.columnToFieldMap.put(column, field);
 		}
-
 	}
 
 	public void create(SQLiteDatabase database) {
@@ -89,41 +91,44 @@ class ModelEntity <E extends Model> extends MObject {
 			ColumnType type = this.store.getColumnType(field);
 
 			builder.append(", ").append("\"").append(columnName).append("\" ").append(type);
-			String index = null;
+			Index.Direction index = null;
 
-			if (field.isAnnotationPresent(Column.class)) {
-				Column column = field.getAnnotation(Column.class);
+			if(field.isAnnotationPresent(Length.class)) {
+				builder.append("(").append(field.getAnnotation(Length.class).value()).append(")");
+			}
 
-				if(column.indexAsc()) {
-					index = " ASC";
-				} else if(column.indexDesc()) {
-					index = " DESC";
-				} else if(column.index()) {
-					index = "";
-				}
+			if(field.isAnnotationPresent(NotNull.class)) {
+				builder.append(" NOT NULL");
+			}
 
-				if (column.length() > -1) {
-					builder.append("(").append(column.length()).append(")");
-				}
-
-				if (column.notNull()) {
-					builder.append(" NOT NULL");
-				}
-
-				if (column.unique()) {
-					builder.append(" UNIQUE");
-				}
+			if(field.isAnnotationPresent(Unique.class)) {
+				builder.append(" UNIQUE");
 			}
 
 			if(Model.class.isAssignableFrom(field.getType())) {
 				@SuppressWarnings("unchecked")
 				ModelEntity entity = this.store.getModelEntity((Class<? extends Model>)field.getType());
 				builder.append(" REFERENCES ").append(entity.getTable()).append("(").append(PRIMARY_KEY_FIELD).append(")");
-				index = "";
+				index = Index.Direction.NONE;
+			} else if(field.isAnnotationPresent(Index.class)) {
+				index = field.getAnnotation(Index.class).value();
 			}
 
 			if(index != null) {
-				indexes.add(String.format("CREATE INDEX IF NOT EXISTS %s_%s_INDEX ON %s (%s%s)", this.table, columnName, this.table, columnName, index));
+				String direction = null;
+
+				switch (index) {
+					case ASC:
+						direction = " ASC";
+						break;
+					case DESC:
+						direction = " DESC";
+						break;
+					default:
+						direction = "";
+				}
+
+				indexes.add(String.format("CREATE INDEX IF NOT EXISTS %s_%s_INDEX ON %s (%s%s)", this.table, columnName, this.table, columnName, direction));
 			}
 		}
 
@@ -143,6 +148,10 @@ class ModelEntity <E extends Model> extends MObject {
 
 	public String getColumnForFieldName(String fieldName) {
 		return this.fieldNameToColumnMap.get(fieldName);
+	}
+
+	public List<String> getColumns() {
+		return Collections.unmodifiableList(columns);
 	}
 
 	public void save(E model) {
@@ -241,10 +250,6 @@ class ModelEntity <E extends Model> extends MObject {
 	}
 
 	public E parseCursor(Cursor cursor, List<String> selectedColumns) {
-		if(selectedColumns == null) {
-			selectedColumns = this.columns;
-		}
-
 		E model;
 
 		try {

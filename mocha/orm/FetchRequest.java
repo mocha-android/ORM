@@ -11,7 +11,7 @@ import mocha.foundation.SortDescriptor;
 
 import java.util.List;
 
-public class FetchRequest <E extends Model> implements Copying<FetchRequest<E>> {
+public class FetchRequest<E extends Model> implements Copying<FetchRequest<E>> {
 	private Predicate predicate;
 	private SortDescriptor[] sortDescriptors;
 	private long fetchLimit;

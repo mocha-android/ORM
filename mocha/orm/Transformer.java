@@ -65,25 +65,4 @@ public abstract class Transformer<O,T> {
 
 	}
 
-	static class NONE extends Transformer<Class, Class> {
-		public Class<? extends Class> getValueClass() {
-			return null;
-		}
-
-		public Class<? extends Class> getTransformedValueClass() {
-			return null;
-		}
-
-		public ColumnType getColumnType() {
-			return null;
-		}
-
-		public Class getTransformedValue(Class value) {
-			return null;
-		}
-
-		public Class getReverseTransformedValue(Class transformedValue) {
-			return null;
-		}
-	}
 }
