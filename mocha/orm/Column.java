@@ -15,12 +15,14 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Column {
 
-	public String name() default "";
+	public Class<? extends Transformer> transformer() default Transformer.NONE.class;
+
 	public boolean index() default false;
 	public boolean indexAsc() default false;
 	public boolean indexDesc() default false;
 
 	public int length() default -1;
+
 
 	public boolean notNull() default false;
 	public boolean unique() default false;
