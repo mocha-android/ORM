@@ -9,7 +9,7 @@ import java.lang.reflect.Field;
 
 public class Model {
 
-	int primaryKey = 0;
+	long primaryKey = 0;
 
 	static Field getPrimaryKeyField() {
 		try {

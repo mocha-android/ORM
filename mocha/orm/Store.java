@@ -6,12 +6,14 @@
 package mocha.orm;
 
 import android.app.Application;
+import android.database.Cursor;
 import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteStatement;
 
 import java.lang.reflect.Field;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class Store {
@@ -70,6 +72,14 @@ public class Store {
 		this.transformerInstances.put(transformerClass, transformer);
 	}
 
+	public <E extends Model> long count(FetchRequest<E> fetchRequest) {
+		return fetchRequest.getQuery(this).count();
+	}
+
+	public <E extends Model> List<E> execute(FetchRequest<E> fetchRequest) {
+		return fetchRequest.getQuery(this).execute();
+	}
+
 	public <E extends Model> void save(E model) {
 		ModelEntity entity = getModelEntity(model);
 
@@ -78,6 +88,17 @@ public class Store {
 		} else {
 			//noinspection unchecked
 			entity.save(model);
+		}
+	}
+
+	public <E extends Model> void delete(E model) {
+		ModelEntity entity = getModelEntity(model);
+
+		if(entity == null) {
+			throw new RuntimeException("Trying to delete model '" + model.getClass() + "', which hasn't been registred with this store.");
+		} else {
+			//noinspection unchecked
+			entity.delete(model);
 		}
 	}
 
@@ -92,6 +113,7 @@ public class Store {
 	SQLiteDatabase getDatabase() {
 		if(this.database == null) {
 			this.database = SQLiteDatabase.openOrCreateDatabase(this.databasePath, null);
+			this.database.setForeignKeyConstraintsEnabled(true);
 
 			SQLiteStatement tableExistsStatement = this.compileStatement("SELECT COUNT(*) FROM \"sqlite_master\" WHERE \"type\" = ? AND \"name\" = ?");
 			tableExistsStatement.bindString(1, "table");
@@ -123,6 +145,8 @@ public class Store {
 		Transformer transformer = this.getTransformer(field);
 		if(transformer != null) {
 			type = transformer.getTransformedValueClass();
+			//noinspection unchecked
+			value = transformer.getTransformedValue(value);
 		}
 
 		if(type == Integer.class || type == int.class || type == Long.class || type == long.class || type == Boolean.class || type == boolean.class) {
@@ -170,6 +194,40 @@ public class Store {
 		throw new RuntimeException("Could not determine column type for field " + field.getName() + " of type " + type);
 	}
 
+	<E> void setField(E model, Field field, Cursor cursor, int columnIndex) throws IllegalAccessException {
+		Transformer transformer = this.getTransformer(field);
+
+		if(transformer != null) {
+			// TODO
+			return;
+		}
+
+		Class type = field.getClass();
+
+		if(type == Integer.class || type == int.class) {
+			field.setInt(model, cursor.getInt(columnIndex));
+		} else if(type == Long.class || type == long.class) {
+			field.setLong(model, cursor.getLong(columnIndex));
+		} else if(type == Long.class || type == long.class || type == Boolean.class || type == boolean.class) {
+			field.setBoolean(model, cursor.getInt(columnIndex) == 1);
+		} else if(type == Float.class || type == float.class) {
+			field.setFloat(model, cursor.getFloat(columnIndex));
+		} else if(type == Double.class || type == double.class) {
+			field.setDouble(model, cursor.getDouble(columnIndex));
+		} else if(type == String.class) {
+			field.set(model, cursor.getString(columnIndex));
+		} else if(type == Character.class) {
+			// TODO
+		} else if(type == byte[].class) {
+			field.set(model, cursor.getBlob(columnIndex));
+		} else if(Model.class.isAssignableFrom(type)) {
+			// TODO
+		} else if(type.isEnum()) {
+			field.set(model, Enum.valueOf(type, cursor.getString(columnIndex)));
+		}
+
+	}
+
 	Transformer getTransformer(Field field) {
 		if(field.isAnnotationPresent(Column.class)) {
 			Column column = field.getAnnotation(Column.class);
@@ -193,5 +251,6 @@ public class Store {
 	ModelEntity getModelEntity(Class<? extends Model> modelClass) {
 		return this.entities.get(modelClass);
 	}
+
 
 }

@@ -5,6 +5,7 @@
  */
 package mocha.orm;
 
+import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteStatement;
 import mocha.foundation.MObject;
@@ -22,7 +23,8 @@ class ModelEntity <E extends Model> extends MObject {
 	private Map<Field, String> fieldToColumnMap;
 	private Map<String, String> fieldNameToColumnMap;
 	private Map<String, Field> columnToFieldMap;
-	private static final String PRIMARY_KEY_COLUMN = "Z_ID";
+
+	public static final String PRIMARY_KEY_COLUMN = "Z_ID";
 	private static final Field PRIMARY_KEY_FIELD = Model.getPrimaryKeyField();
 
 	private SQLiteStatement insertStatement;
@@ -139,6 +141,10 @@ class ModelEntity <E extends Model> extends MObject {
 		return this.table;
 	}
 
+	public String getColumnForFieldName(String fieldName) {
+		return this.fieldNameToColumnMap.get(fieldName);
+	}
+
 	public void save(E model) {
 		if(model.primaryKey > 0) {
 			this.update(model);
@@ -183,10 +189,10 @@ class ModelEntity <E extends Model> extends MObject {
 		if(model != null) {
 			int columnIndex = 0;
 			for (String column : this.columns) {
-				this.store.bind(this.insertStatement, columnIndex++, model, this.columnToFieldMap.get(column));
+				this.store.bind(this.insertStatement, ++columnIndex, model, this.columnToFieldMap.get(column));
 			}
 
-			this.insertStatement.executeInsert();
+			model.primaryKey = this.insertStatement.executeInsert();
 		}
 	}
 
@@ -215,12 +221,49 @@ class ModelEntity <E extends Model> extends MObject {
 		int columnIndex = 0;
 
 		for(String column : this.columns) {
-			this.store.bind(this.updateStatement, columnIndex++, model, this.columnToFieldMap.get(column));
+			this.store.bind(this.updateStatement, ++columnIndex, model, this.columnToFieldMap.get(column));
 		}
 
-		this.store.bind(this.updateStatement, columnIndex, model, PRIMARY_KEY_FIELD);
+		this.store.bind(this.updateStatement, ++columnIndex, model, PRIMARY_KEY_FIELD);
 
 		this.updateStatement.executeUpdateDelete();
+	}
+
+	public void delete(E model) {
+		if(model.primaryKey <= 0) return;
+
+		if(this.deleteStatement == null) {
+			this.deleteStatement = this.store.compileStatement(String.format("DELETE FROM \"%s\" WHERE \"%s\" = ?", this.table, PRIMARY_KEY_FIELD));
+		}
+
+		this.deleteStatement.bindLong(1, model.primaryKey);
+		this.deleteStatement.executeUpdateDelete();
+	}
+
+	public E parseCursor(Cursor cursor, List<String> selectedColumns) {
+		if(selectedColumns == null) {
+			selectedColumns = this.columns;
+		}
+
+		E model;
+
+		try {
+			model = this.modelClass.newInstance();
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+
+		int selectedColumnsSize = selectedColumns.size();
+		for(int i = 0; i < selectedColumnsSize; i++) {
+			String column = selectedColumns.get(i);
+			Field field = this.columnToFieldMap.get(column);
+
+			if(field != null) {
+				this.store.setField(model, field, cursor, i);
+			}
+		}
+
+		return model;
 	}
 
 }
