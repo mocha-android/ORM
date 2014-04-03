@@ -14,20 +14,20 @@ import java.util.ArrayList;
 import java.util.List;
 
 class FetchRequestQuery <E extends Model> implements Copying<FetchRequestQuery<E>> {
-	private final Store store;
-	private final FetchRequest<E> fetchRequest;
-	private final ModelEntity<E> modelEntity;
+	final Store store;
+	final FetchRequest<E> fetchRequest;
+	final ModelEntity<E> modelEntity;
 
-	private boolean distinct;
-	private String table;
-	private String[] columns;
-	private String selection;
-	private String[] selectionArgs;
-	private String groupBy;
-	private String having;
-	private String orderBy;
+	boolean distinct;
+	String table;
+	String[] columns;
+	String selection;
+	String[] selectionArgs;
+	String groupBy;
+	String having;
+	String orderBy;
 
-	private List<String> selectedColumns;
+	List<String> selectedColumns;
 
 	public FetchRequestQuery(FetchRequest<E> fetchRequest, Store store) {
 		this(fetchRequest, store, true);
@@ -106,11 +106,24 @@ class FetchRequestQuery <E extends Model> implements Copying<FetchRequestQuery<E
 	}
 
 	public List<E> execute() {
-		// TODO: Handle fetchBatchSize
+		long fetchBatchSize = this.fetchRequest.getFetchBatchSize();
+
+		if(fetchBatchSize > 0 && fetchBatchSize < Long.MAX_VALUE) {
+			long fetchLimit = this.fetchRequest.getFetchLimit();
+
+			if(fetchLimit == 0 || fetchLimit < Long.MAX_VALUE || fetchLimit > fetchBatchSize) {
+				return new BatchedQueryResultList<E>(this);
+			}
+		}
+
 		return this.execute(this.fetchRequest.getFetchLimit(), this.fetchRequest.getFetchOffset());
 	}
 
 	private List<E> execute(long limit, long offset) {
+		return this.parseCursor(this.execute(this.columns, limit, offset));
+	}
+
+	Cursor execute(String[] columns, long limit, long offset) {
 		String limitString = null;
 
 		if((limit > 0 && limit < Long.MAX_VALUE) || offset > 0) {
@@ -118,10 +131,10 @@ class FetchRequestQuery <E extends Model> implements Copying<FetchRequestQuery<E
 			limitString = String.format("%d, %d", offset, limit);
 		}
 
-		return this.parseCursor(this.store.getDatabase().query(this.distinct, this.table, this.columns, this.selection, this.selectionArgs, this.groupBy, this.having, this.orderBy, limitString));
+		return this.store.getDatabase().query(this.distinct, this.table, columns, this.selection, this.selectionArgs, this.groupBy, this.having, this.orderBy, limitString);
 	}
 
-	private List<E> parseCursor(Cursor cursor) {
+	List<E> parseCursor(Cursor cursor) {
 		List<E> list = new ArrayList<E>(cursor.getCount());
 		MObject.MLog(MObject.LogLevel.WTF, "Processing cursor of size: " + cursor.getCount());
 
