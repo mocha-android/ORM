@@ -7,12 +7,13 @@ package mocha.orm;
 
 
 import mocha.foundation.Copying;
+import mocha.foundation.OptionalInterface;
 import mocha.foundation.SortDescriptor;
 
 import java.util.List;
 
 public class FetchRequest<E extends Model> implements Copying<FetchRequest<E>> {
-	private Predicate predicate;
+	private Query query;
 	private SortDescriptor[] sortDescriptors;
 	private long fetchLimit;
 	private boolean includesPropertyValues;
@@ -23,9 +24,9 @@ public class FetchRequest<E extends Model> implements Copying<FetchRequest<E>> {
 	private long fetchOffset;
 	private long fetchBatchSize;
 	private String[] propertiesToGroupBy;
-	private Predicate havingPredicate;
+	private Query havingQuery;
 	private Class<E> modelClass;
-	private FetchRequestQuery<E> query;
+	private FetchRequestQuery<E> fetchRequestQuery;
 
 	private FetchRequest() {
 		this.setFetchLimit(Long.MAX_VALUE);
@@ -43,8 +44,8 @@ public class FetchRequest<E extends Model> implements Copying<FetchRequest<E>> {
 
 
 	FetchRequestQuery<E> getQuery(Store store) {
-		if(this.query != null && this.query.getStore() == store) {
-			return this.query.copy();
+		if(this.fetchRequestQuery != null && this.fetchRequestQuery.getStore() == store) {
+			return this.fetchRequestQuery.copy();
 		} else {
 			return new FetchRequestQuery<E>(this, store);
 		}
@@ -56,7 +57,7 @@ public class FetchRequest<E extends Model> implements Copying<FetchRequest<E>> {
 
 	public FetchRequest<E> copy() {
 		FetchRequest<E> fetchRequest = new FetchRequest<E>(this.modelClass);
-		fetchRequest.setPredicate(this.predicate);
+		fetchRequest.setQuery(this.query);
 		fetchRequest.setSortDescriptors(this.sortDescriptors);
 		fetchRequest.setFetchLimit(this.fetchLimit);
 		fetchRequest.setIncludesPropertyValues(this.includesPropertyValues);
@@ -67,18 +68,18 @@ public class FetchRequest<E extends Model> implements Copying<FetchRequest<E>> {
 		fetchRequest.setFetchOffset(this.fetchOffset);
 		fetchRequest.setFetchBatchSize(this.fetchBatchSize);
 		fetchRequest.setPropertiesToGroupBy(this.propertiesToGroupBy);
-		fetchRequest.setHavingPredicate(this.havingPredicate);
+		fetchRequest.setHavingQuery(this.havingQuery);
 		return null;
 	}
 
 	// Properties
 
-	public Predicate getPredicate() {
-		return this.predicate;
+	public Query getQuery() {
+		return this.query;
 	}
 
-	public void setPredicate(Predicate predicate) {
-		this.predicate = predicate;
+	public void setQuery(Query query) {
+		this.query = query;
 	}
 
 	public SortDescriptor[] getSortDescriptors() {
@@ -180,11 +181,11 @@ public class FetchRequest<E extends Model> implements Copying<FetchRequest<E>> {
 		this.propertiesToGroupBy = new String[propertiesToGroupBy.size()];
 		this.propertiesToGroupBy = propertiesToGroupBy.toArray(this.propertiesToGroupBy);
 	}
-	public Predicate getHavingPredicate() {
-		return this.havingPredicate;
+	public Query getHavingQuery() {
+		return this.havingQuery;
 	}
 
-	public void setHavingPredicate(Predicate havingPredicate) {
-		this.havingPredicate = havingPredicate;
+	public void setHavingQuery(Query havingQuery) {
+		this.havingQuery = havingQuery;
 	}
 }
