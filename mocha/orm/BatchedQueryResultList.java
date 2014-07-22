@@ -40,7 +40,7 @@ class BatchedQueryResultList<E extends Model> extends MObject implements List<E>
 		List<Integer> currentOffsets = null;
 
 		String[] columns = new String[] { fetchRequestQuery.table + "." + ModelEntity.PRIMARY_KEY_COLUMN };
-		Cursor cursor = fetchRequestQuery.execute(columns, fetchRequestQuery.fetchRequest.getFetchLimit(), fetchRequestQuery.fetchRequest.getFetchOffset());
+		Cursor cursor = fetchRequestQuery.execute(columns, fetchRequestQuery.fetchRequest.getFetchLimit(), fetchRequestQuery.fetchRequest.getFetchOffset(), true);
 
 		if(cursor.moveToFirst()) {
 			do {

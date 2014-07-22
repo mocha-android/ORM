@@ -47,7 +47,7 @@ public class FetchRequest<E extends Model> implements Copying<FetchRequest<E>> {
 		if(this.fetchRequestQuery != null && this.fetchRequestQuery.getStore() == store) {
 			return this.fetchRequestQuery.copy();
 		} else {
-			return new FetchRequestQuery<E>(this, store);
+			return new FetchRequestQuery<>(this, store);
 		}
 	}
 
@@ -56,7 +56,7 @@ public class FetchRequest<E extends Model> implements Copying<FetchRequest<E>> {
 	}
 
 	public FetchRequest<E> copy() {
-		FetchRequest<E> fetchRequest = new FetchRequest<E>(this.modelClass);
+		FetchRequest<E> fetchRequest = new FetchRequest<>(this.modelClass);
 		fetchRequest.setQuery(this.query);
 		fetchRequest.setSortDescriptors(this.sortDescriptors);
 		fetchRequest.setFetchLimit(this.fetchLimit);

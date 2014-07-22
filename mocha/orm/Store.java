@@ -73,7 +73,7 @@ public class Store {
 	}
 
 	public <E extends Model> long count(FetchRequest<E> fetchRequest) {
-		return fetchRequest.getQuery(this).count();
+		return fetchRequest.getQuery(this).count(fetchRequest.getFetchLimit(), fetchRequest.getFetchOffset());
 	}
 
 	public <E extends Model> List<E> execute(FetchRequest<E> fetchRequest) {

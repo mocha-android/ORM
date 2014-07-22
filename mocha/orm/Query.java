@@ -65,6 +65,10 @@ public class Query implements Copying<Query> {
 			super(combineOperator, property, comparisonOperator);
 			this.value = value;
 		}
+
+		public String toString() {
+			return String.format("%s (%s %s %s)", this.combineOperator, this.property, this.comparisonOperator, this.value);
+		}
 	}
 
 	final static class AdvancedComparisonCondition extends ComparisonCondition {
@@ -73,6 +77,10 @@ public class Query implements Copying<Query> {
 		AdvancedComparisonCondition(CombineOperator combineOperator, String property, ComparisonOperator comparisonOperator, List<Object> values) {
 			super(combineOperator, property, comparisonOperator);
 			this.values = values;
+		}
+
+		public String toString() {
+			return String.format("%s (%s %s %s)", this.combineOperator, this.property, this.comparisonOperator, this.values);
 		}
 	}
 
@@ -83,13 +91,21 @@ public class Query implements Copying<Query> {
 			super(combineOperator);
 			this.compoundQuery = compoundQuery.copy();
 		}
+
+		public String toString() {
+			return String.format("%s (%s)", this.combineOperator, this.compoundQuery);
+		}
 	}
 
 
-	List<Condition> conditions = new ArrayList<Condition>();
+	List<Condition> conditions = new ArrayList<>();
 
 	public Query() {
 
+	}
+
+	public String toString() {
+		return this.conditions.toString();
 	}
 
 	public Query eq(String property, Object value) {
@@ -188,7 +204,7 @@ public class Query implements Copying<Query> {
 
 	Pair<String, List<String>> compile(ModelEntity entity, String table) {
 		StringBuilder query = new StringBuilder();
-		List<String> bindings = new ArrayList<String>();
+		List<String> bindings = new ArrayList<>();
 
 		boolean first = true;
 
@@ -209,7 +225,18 @@ public class Query implements Copying<Query> {
 				} else if(condition instanceof AdvancedComparisonCondition) {
 					query.append("(");
 
+					boolean firstValue = true;
 
+					for(Object value : ((AdvancedComparisonCondition) condition).values) {
+						if(firstValue) {
+							query.append("?");
+							firstValue = false;
+						} else {
+							query.append(",?");
+						}
+
+						bindings.add(this.toBindingString(value));
+					}
 
 					query.append(")");
 				} else {
@@ -223,7 +250,8 @@ public class Query implements Copying<Query> {
 						query.append(condition.combineOperator.value);
 					}
 
-					// query.append("(").append()
+					query.append("(").append(pair.first).append(")");
+					bindings.addAll(pair.second);
 				}
 			} else {
 				throw new UnsupportedConditionException(condition);
@@ -232,11 +260,19 @@ public class Query implements Copying<Query> {
 			first = false;
 		}
 
-		return new Pair<String, List<String>>(query.toString(), bindings);
+		return new Pair<>(query.toString(), bindings);
 	}
 
 	private String toBindingString(Object value) {
-		return null;
+		if(value != null) {
+			if (value instanceof Model) {
+				return String.valueOf(((Model) value).primaryKey);
+			} else {
+				return value.toString();
+			}
+		} else {
+			return null;
+		}
 	}
 
 	public Query copy() {
@@ -251,5 +287,6 @@ public class Query implements Copying<Query> {
 			super("Unsupported condition: " + condition);
 		}
 	}
+
 }
 
