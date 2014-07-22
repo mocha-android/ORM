@@ -23,54 +23,59 @@ class BatchedQueryResultList<E extends Model> extends MObject implements List<E>
 
 	public BatchedQueryResultList(FetchRequestQuery<E> fetchRequestQuery, List<List<Integer>> groupOffsets) {
 		this.batchSize = fetchRequestQuery.fetchRequest.getFetchBatchSize();
-		this.primaryKeys = new ArrayList<Long>();
+		this.primaryKeys = new ArrayList<>();
 		this.store = fetchRequestQuery.store;
 		this.fetchRequestQuery = fetchRequestQuery;
 
 		MLog(LogLevel.WTF, "Created batched result list with size: " + this.batchSize);
 
-		boolean useGrouping = false;
+		String[] propertiesToGroupBy = fetchRequestQuery.fetchRequest.getPropertiesToGroupBy();
+		boolean useGrouping = propertiesToGroupBy != null && propertiesToGroupBy.length > 0;
+		List<String> columns = new ArrayList<>();
+		columns.add(fetchRequestQuery.table + "." + ModelEntity.PRIMARY_KEY_COLUMN);
 
-//			if(useGrouping) {
-//				fetchProperties.add(groupPropertyName);
-//			}
+		if(useGrouping) {
+			for(String property : propertiesToGroupBy) {
+				columns.add(fetchRequestQuery.table + "." + fetchRequestQuery.modelEntity.getColumnForFieldName(property));
+			}
+		}
 
 		Map<Object,Integer> groupIndexes = !useGrouping ? null : new HashMap<Object, Integer>();
 		Object currentValue = null;
 		List<Integer> currentOffsets = null;
 
-		String[] columns = new String[] { fetchRequestQuery.table + "." + ModelEntity.PRIMARY_KEY_COLUMN };
-		Cursor cursor = fetchRequestQuery.execute(columns, fetchRequestQuery.fetchRequest.getFetchLimit(), fetchRequestQuery.fetchRequest.getFetchOffset(), true);
+		String[] columnsArray = columns.toArray(new String[columns.size()]);
+		Cursor cursor = fetchRequestQuery.execute(columnsArray, fetchRequestQuery.fetchRequest.getFetchLimit(), fetchRequestQuery.fetchRequest.getFetchOffset(), true);
 
 		if(cursor.moveToFirst()) {
 			do {
 				this.primaryKeys.add(cursor.getLong(0));
 
-//					if(useGrouping) {
-//						Object value = cursor.getString(1);
-//
-//						if(value == null) continue;
-//
-//						if(currentValue == null || !value.equals(currentValue)) {
-//							Integer index = groupIndexes.get(value);
-//
-//							if(index != null) {
-//								currentOffsets = groupOffsets.get(index);
-//							} else {
-//								currentOffsets = null;
-//							}
-//
-//							currentValue = value;
-//						}
-//
-//						if(currentOffsets == null) {
-//							currentOffsets = new ArrayList<Integer>();
-//							groupIndexes.put(value, groupOffsets.size());
-//							groupOffsets.add(currentOffsets);
-//						}
-//
-//						currentOffsets.add(cursor.getPosition());
-//					}
+				if(useGrouping) {
+					Object value = cursor.getString(1);
+
+					if(value == null) continue;
+
+					if(currentValue == null || !value.equals(currentValue)) {
+						Integer index = groupIndexes.get(value);
+
+						if(index != null) {
+							currentOffsets = groupOffsets.get(index);
+						} else {
+							currentOffsets = null;
+						}
+
+						currentValue = value;
+					}
+
+					if(currentOffsets == null) {
+						currentOffsets = new ArrayList<>();
+						groupIndexes.put(value, groupOffsets.size());
+						groupOffsets.add(currentOffsets);
+					}
+
+					currentOffsets.add(cursor.getPosition());
+				}
 			} while(cursor.moveToNext());
 		}
 
@@ -234,10 +239,6 @@ class BatchedQueryResultList<E extends Model> extends MObject implements List<E>
 		selection.append(")");
 
 		List<E> models = this.fetchRequestQuery.parseCursor(this.store.getDatabase().query(this.fetchRequestQuery.table, this.fetchRequestQuery.columns, selection.toString(), selectionArgs, null, null, null));
-
-//			if(this.toManyRelationshipsForPrefetching != null) {
-//				prefetchRelationships(activeAndroid, models, this.toManyRelationshipsForPrefetching);
-//			}
 
 		for(E model : models) {
 			// We're not sorting the query, so the cursor may not

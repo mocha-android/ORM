@@ -9,6 +9,7 @@ import android.app.Application;
 import android.database.Cursor;
 import android.database.SQLException;
 import android.database.sqlite.*;
+import mocha.foundation.Lists;
 import mocha.foundation.MObject;
 
 import java.lang.reflect.Field;
@@ -29,9 +30,9 @@ public class Store {
 	}
 
 	public Store(String databasePath, int version) {
-		this.entities = new HashMap<Class<? extends Model>, ModelEntity<? extends Model>>();
-		this.transformers = new HashMap<Class, Transformer>();
-		this.transformerInstances = new HashMap<Class<? extends Transformer>, Transformer>();
+		this.entities = new HashMap<>();
+		this.transformers = new HashMap<>();
+		this.transformerInstances = new HashMap<>();
 		this.databasePath = databasePath;
 		this.version = version;
 
@@ -39,14 +40,16 @@ public class Store {
 		this.registerTransformer(Transformer.Calendar.class);
 	}
 
-	public <E extends Model> void registerModel(Class<E> model) {
+	public <E extends Model> Store registerModel(Class<E> model) {
 		if(this.database != null) {
 			throw new RuntimeException("You can not register a model once the store has been used.");
 		}
 
 		if(!this.entities.containsKey(model)) {
-			this.entities.put(model, new ModelEntity<E>(this, model));
+			this.entities.put(model, new ModelEntity<>(this, model));
 		}
+
+		return this;
 	}
 
 	public void registerModels(Class<? extends Model>... models) {
@@ -78,6 +81,10 @@ public class Store {
 
 	public <E extends Model> List<E> execute(FetchRequest<E> fetchRequest) {
 		return fetchRequest.getQuery(this).execute();
+	}
+
+	public <E extends Model> E first(FetchRequest<E> fetchRequest) {
+		return Lists.first(this.execute(fetchRequest));
 	}
 
 	public <E extends Model> void save(E model) {
@@ -208,12 +215,45 @@ public class Store {
 		}
 	}
 
-	<E> void setField(E model, Field field, Cursor cursor, int columnIndex) {
+	<E> void setField(E model, Field field, Cursor cursor, int columnIndex, boolean eagerLoadHasOnes) {
 		try {
 			Transformer transformer = this.getTransformer(field);
 
 			if (transformer != null) {
-				// TODO
+				Object value = null;
+
+				switch (transformer.getColumnType()) {
+					case INTEGER:
+						if(Long.class.isAssignableFrom(transformer.getTransformedValueClass())) {
+							//noinspection unchecked
+							value = transformer.getReverseTransformedValue(cursor.getLong(columnIndex));
+						} else {
+							//noinspection unchecked
+							value = transformer.getReverseTransformedValue(cursor.getInt(columnIndex));
+						}
+
+						break;
+					case REAL:
+						if(Float.class.isAssignableFrom(transformer.getTransformedValueClass())) {
+							//noinspection unchecked
+							value = transformer.getReverseTransformedValue(cursor.getFloat(columnIndex));
+						} else {
+							//noinspection unchecked
+							value = transformer.getReverseTransformedValue(cursor.getDouble(columnIndex));
+						}
+
+						break;
+					case TEXT:
+						//noinspection unchecked
+						value = transformer.getReverseTransformedValue(cursor.getString(columnIndex));
+						break;
+					case BLOB:
+						//noinspection unchecked
+						value = transformer.getReverseTransformedValue(cursor.getBlob(columnIndex));
+						break;
+				}
+
+				field.set(model, value);
 				return;
 			}
 
@@ -236,7 +276,11 @@ public class Store {
 			} else if (type == byte[].class) {
 				field.set(model, cursor.getBlob(columnIndex));
 			} else if (Model.class.isAssignableFrom(type)) {
-				// TODO
+				if(eagerLoadHasOnes) {
+					@SuppressWarnings("unchecked") FetchRequest fetchRequest = new FetchRequest(type);
+					fetchRequest.setQuery((new Query()).eq("this", String.valueOf(cursor.getLong(columnIndex))));
+					field.set(model, this.first(fetchRequest));
+				}
 			} else if (type.isEnum()) {
 				field.set(model, Enum.valueOf(type, cursor.getString(columnIndex)));
 			}

@@ -8,16 +8,21 @@ package mocha.orm;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteStatement;
+import android.util.Pair;
 import mocha.foundation.MObject;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.ParameterizedType;
 import java.util.*;
 
 class ModelEntity <E extends Model> extends MObject {
-	private Store store;
-	private Class<E> modelClass;
-	private String table;
+	final Store store;
+	final Class<E> modelClass;
+	final String table;
+	
+	private final Constructor<E> constructor;
 
 	private List<String> columns;
 	private Map<Field, String> fieldToColumnMap;
@@ -36,7 +41,13 @@ class ModelEntity <E extends Model> extends MObject {
 		this.modelClass = modelClass;
 		this.table = "Z" + modelClass.getSimpleName().toUpperCase();
 
-		List<Field> fields = new ArrayList<Field>();
+		try {
+			this.constructor = modelClass.getConstructor(Store.class);
+		} catch (NoSuchMethodException e) {
+			throw new RuntimeException("Subclasses of mocha.orm.Model must implement a constructor with only a mocha.orm.Store parameter.", e);
+		}
+
+		List<Field> fields = new ArrayList<>();
 
 		Class current = modelClass;
 		while(current != null && !current.equals(Model.class)) {
@@ -56,6 +67,9 @@ class ModelEntity <E extends Model> extends MObject {
 		// adding it would cause it to be queried on twice.
 
 		this.fieldNameToColumnMap.put(PRIMARY_KEY_FIELD.getName(), PRIMARY_KEY_COLUMN);
+		this.fieldNameToColumnMap.put("this", PRIMARY_KEY_COLUMN);
+		this.fieldNameToColumnMap.put("self", PRIMARY_KEY_COLUMN);
+
 		this.fieldToColumnMap.put(PRIMARY_KEY_FIELD, PRIMARY_KEY_COLUMN);
 		this.columnToFieldMap.put(PRIMARY_KEY_COLUMN, PRIMARY_KEY_FIELD);
 
@@ -75,6 +89,11 @@ class ModelEntity <E extends Model> extends MObject {
 			this.fieldNameToColumnMap.put(fieldName, column);
 			this.columnToFieldMap.put(column, field);
 		}
+
+		this.columns = Collections.unmodifiableList(this.columns);
+		this.fieldToColumnMap = Collections.unmodifiableMap(this.fieldToColumnMap);
+		this.fieldNameToColumnMap = Collections.unmodifiableMap(this.fieldNameToColumnMap);
+		this.columnToFieldMap = Collections.unmodifiableMap(this.columnToFieldMap);
 	}
 
 	public void create(SQLiteDatabase database) {
@@ -110,7 +129,7 @@ class ModelEntity <E extends Model> extends MObject {
 			if(Model.class.isAssignableFrom(field.getType())) {
 				@SuppressWarnings("unchecked")
 				ModelEntity entity = this.store.getModelEntity((Class<? extends Model>)field.getType());
-				builder.append(" REFERENCES ").append(entity.getTable()).append("(").append(PRIMARY_KEY_FIELD).append(")");
+				builder.append(" REFERENCES ").append(entity.getTable()).append("(").append(PRIMARY_KEY_COLUMN).append(")");
 				index = Index.Direction.NONE;
 			} else if(field.isAnnotationPresent(Index.class)) {
 				index = field.getAnnotation(Index.class).value();
@@ -152,8 +171,12 @@ class ModelEntity <E extends Model> extends MObject {
 		return this.fieldNameToColumnMap.get(fieldName);
 	}
 
+	public Field getField(String fieldName) {
+		return this.columnToFieldMap.get(this.fieldNameToColumnMap.get(fieldName));
+	}
+
 	public List<String> getColumns() {
-		return Collections.unmodifiableList(columns);
+		return this.columns;
 	}
 
 	public void save(E model) {
@@ -251,11 +274,11 @@ class ModelEntity <E extends Model> extends MObject {
 		this.deleteStatement.executeUpdateDelete();
 	}
 
-	public E parseCursor(Cursor cursor, List<String> selectedColumns) {
+	public E parseCursor(Cursor cursor, List<String> selectedColumns, boolean eagerLoadHasOnes) {
 		E model;
 
 		try {
-			model = this.modelClass.newInstance();
+			model = this.constructor.newInstance(this.store);
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}
@@ -266,7 +289,7 @@ class ModelEntity <E extends Model> extends MObject {
 			Field field = this.columnToFieldMap.get(column);
 
 			if(field != null) {
-				this.store.setField(model, field, cursor, i);
+				this.store.setField(model, field, cursor, i, eagerLoadHasOnes);
 			}
 		}
 

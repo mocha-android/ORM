@@ -7,18 +7,35 @@ package mocha.orm;
 
 
 import mocha.foundation.Copying;
-import mocha.foundation.OptionalInterface;
 import mocha.foundation.SortDescriptor;
 
 import java.util.List;
 
 public class FetchRequest<E extends Model> implements Copying<FetchRequest<E>> {
+
+	public static class Relation {
+		public enum Type {
+			HAS_ONE,
+			HAS_MANY
+		}
+
+		public final Class<? extends Model> relationClass;
+		public final String relationName;
+		public final Type type;
+
+		public Relation(Class<? extends Model> relationClass, String relationName, Type type) {
+			this.relationClass = relationClass;
+			this.relationName = relationName;
+			this.type = type;
+		}
+	}
+
 	private Query query;
 	private SortDescriptor[] sortDescriptors;
 	private long fetchLimit;
 	private boolean includesPropertyValues;
 	private boolean returnsObjectsAsFaults;
-	private String[] relationshipKeyPathsForPrefetching;
+	private Relation[] relationsForPrefetching;
 	private boolean returnsDistinctResults;
 	private String[] propertiesToFetch;
 	private long fetchOffset;
@@ -62,7 +79,7 @@ public class FetchRequest<E extends Model> implements Copying<FetchRequest<E>> {
 		fetchRequest.setFetchLimit(this.fetchLimit);
 		fetchRequest.setIncludesPropertyValues(this.includesPropertyValues);
 		fetchRequest.setReturnsObjectsAsFaults(this.returnsDistinctResults);
-		fetchRequest.setRelationshipKeyPathsForPrefetching(this.relationshipKeyPathsForPrefetching);
+		fetchRequest.setRelationsForPrefetching(this.relationsForPrefetching);
 		fetchRequest.setReturnsDistinctResults(this.returnsDistinctResults);
 		fetchRequest.setPropertiesToFetch(this.propertiesToFetch);
 		fetchRequest.setFetchOffset(this.fetchOffset);
@@ -119,17 +136,21 @@ public class FetchRequest<E extends Model> implements Copying<FetchRequest<E>> {
 		this.returnsObjectsAsFaults = returnsObjectsAsFaults;
 	}
 
-	public String[] getRelationshipKeyPathsForPrefetching() {
-		return this.relationshipKeyPathsForPrefetching;
+	public Relation[] getRelationsForPrefetching() {
+		return this.relationsForPrefetching;
 	}
 
-	public void setRelationshipKeyPathsForPrefetching(String... relationshipKeyPathsForPrefetching) {
-		this.relationshipKeyPathsForPrefetching = relationshipKeyPathsForPrefetching;
+	boolean hasRelationsNeedingPrefetching() {
+		return this.relationsForPrefetching != null && this.relationsForPrefetching.length > 0;
 	}
 
-	public void setRelationshipKeyPathsForPrefetching(List<String> relationshipKeyPathsForPrefetching) {
-		this.relationshipKeyPathsForPrefetching = new String[relationshipKeyPathsForPrefetching.size()];
-		this.relationshipKeyPathsForPrefetching = relationshipKeyPathsForPrefetching.toArray(this.relationshipKeyPathsForPrefetching);
+	public void setRelationsForPrefetching(Relation... relationsForPrefetching) {
+		this.relationsForPrefetching = relationsForPrefetching;
+	}
+
+	public void setRelationsForPrefetching(List<Relation> relationsForPrefetching) {
+		this.relationsForPrefetching = new Relation[relationsForPrefetching.size()];
+		this.relationsForPrefetching = relationsForPrefetching.toArray(this.relationsForPrefetching);
 	}
 
 	public boolean isReturnsDistinctResults() {

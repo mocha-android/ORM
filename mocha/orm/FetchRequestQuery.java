@@ -11,11 +11,7 @@ import mocha.foundation.Copying;
 import mocha.foundation.MObject;
 import mocha.foundation.SortDescriptor;
 
-import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 class FetchRequestQuery <E extends Model> extends MObject implements Copying<FetchRequestQuery<E>> {
 	final Store store;
@@ -185,7 +181,7 @@ class FetchRequestQuery <E extends Model> extends MObject implements Copying<Fet
 
 		if(cursor.moveToFirst()) {
 			do {
-				E model = this.modelEntity.parseCursor(cursor, this.selectedColumns);
+				E model = this.modelEntity.parseCursor(cursor, this.selectedColumns, true);
 				list.add(model);
 			} while (cursor.moveToNext());
 		}
@@ -193,6 +189,14 @@ class FetchRequestQuery <E extends Model> extends MObject implements Copying<Fet
 		cursor.close();
 
 		MObject.MLog(MObject.LogLevel.WTF, "Finished processing cursor.");
+
+		if(this.fetchRequest.hasRelationsNeedingPrefetching()) {
+			//noinspection unchecked
+			RelationshipPrefetcher prefetcher = new RelationshipPrefetcher(this.modelEntity.modelClass, this.fetchRequest, this.store);
+
+			//noinspection unchecked
+			prefetcher.prefetchRelationships(list);
+		}
 
 		return list;
 	}
