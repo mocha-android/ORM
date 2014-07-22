@@ -46,10 +46,10 @@ class ModelEntity <E extends Model> extends MObject {
 
 		int fieldSize = fields.size();
 
-		this.columns = new ArrayList<String>(fieldSize);
-		this.fieldToColumnMap = new HashMap<Field, String>(fieldSize);
-		this.fieldNameToColumnMap = new HashMap<String, String>(fieldSize);
-		this.columnToFieldMap = new HashMap<String, Field>(fieldSize);
+		this.columns = new ArrayList<>(fieldSize);
+		this.fieldToColumnMap = new HashMap<>(fieldSize);
+		this.fieldNameToColumnMap = new HashMap<>(fieldSize);
+		this.columnToFieldMap = new HashMap<>(fieldSize);
 
 		// NOTE: PRIMARY_KEY_COLUMN is intentionally not added to this.columns
 		// because it's always used separately for things such as SELECT and UPDATE,
@@ -86,8 +86,10 @@ class ModelEntity <E extends Model> extends MObject {
 		indexes.add(String.format("CREATE INDEX IF NOT EXISTS %s_%s_INDEX ON %s (%s)", this.table, PRIMARY_KEY_COLUMN, this.table, PRIMARY_KEY_COLUMN));
 
 		for(Map.Entry<Field, String> fieldStringEntry : this.fieldToColumnMap.entrySet()) {
-			Field field = fieldStringEntry.getKey();
 			String columnName = fieldStringEntry.getValue();
+			if(columnName.equals(PRIMARY_KEY_COLUMN)) continue;
+
+			Field field = fieldStringEntry.getKey();
 			ColumnType type = this.store.getColumnType(field);
 
 			builder.append(", ").append("\"").append(columnName).append("\" ").append(type);
@@ -115,7 +117,7 @@ class ModelEntity <E extends Model> extends MObject {
 			}
 
 			if(index != null) {
-				String direction = null;
+				String direction;
 
 				switch (index) {
 					case ASC:
