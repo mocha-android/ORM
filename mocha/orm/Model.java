@@ -87,8 +87,20 @@ public abstract class Model extends MObject {
 		this.store.save(this);
 	}
 
+	public void delete() {
+		this.store.delete(this);
+	}
+
 	protected String toStringExtra() {
 		return "primaryKey=" + this.primaryKey;
+	}
+
+	public long getPrimaryKey() {
+		return this.primaryKey;
+	}
+
+	public Store getStore() {
+		return this.store;
 	}
 
 	public ModelEntity getModelEntity() {
