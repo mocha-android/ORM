@@ -98,6 +98,10 @@ public class Store {
 		return Lists.first(this.execute(fetchRequest));
 	}
 
+	public <E extends Model> void deleteAll(FetchRequest<E> fetchRequest) {
+		fetchRequest.getQuery(this).deleteAll();
+	}
+
 	public <E extends Model> void save(E model) {
 		ModelEntity entity = getModelEntity(model);
 

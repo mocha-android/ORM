@@ -139,6 +139,10 @@ class FetchRequestQuery <E extends Model> extends MObject implements Copying<Fet
 		this.orderBy = orderBy.toString();
 	}
 
+	public void deleteAll() {
+		this.store.getDatabase().delete(this.table, this.selection, this.selectionArgs);
+	}
+
 	public List<E> execute() {
 		long fetchBatchSize = this.fetchRequest.getFetchBatchSize();
 
