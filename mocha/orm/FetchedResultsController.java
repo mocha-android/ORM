@@ -213,4 +213,7 @@ public class FetchedResultsController <M extends Model> extends MObject {
 		return this.fetchRequest;
 	}
 
+	public Store getStore() {
+		return this.store;
+	}
 }
