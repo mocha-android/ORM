@@ -40,6 +40,17 @@ public class Store {
 		this.registerTransformer(Transformer.Calendar.class);
 	}
 
+	public String getDatabasePath() {
+		return this.databasePath;
+	}
+
+	public void close() {
+		if(this.database != null) {
+			this.database.close();
+			this.database = null;
+		}
+	}
+
 	public <E extends Model> Store registerModel(Class<E> model) {
 		if(this.database != null) {
 			throw new RuntimeException("You can not register a model once the store has been used.");
@@ -117,14 +128,9 @@ public class Store {
 		return this.getDatabase().compileStatement(sql);
 	}
 
-	SQLiteDatabase getDatabase() {
+	public SQLiteDatabase getDatabase() {
 		if(this.database == null) {
-			this.database = SQLiteDatabase.openOrCreateDatabase(this.databasePath, new SQLiteDatabase.CursorFactory() {
-				public Cursor newCursor(SQLiteDatabase db, SQLiteCursorDriver masterQuery, String editTable, SQLiteQuery query) {
-					MObject.MLog(MObject.LogLevel.WTF, "SQL: " + query.toString());
-					return new SQLiteCursor(db, masterQuery, editTable, query);
-				}
-			});
+			this.database = SQLiteDatabase.openOrCreateDatabase(this.databasePath, null);
 			this.database.setForeignKeyConstraintsEnabled(true);
 
 			SQLiteStatement tableExistsStatement = this.compileStatement("SELECT COUNT(*) FROM \"sqlite_master\" WHERE \"type\" = ? AND \"name\" = ?");
@@ -140,6 +146,22 @@ public class Store {
 		}
 
 		return this.database;
+	}
+
+	public void beginTransaction() {
+		this.getDatabase().beginTransaction();
+	}
+
+	public void setTransactionSuccessful() {
+		this.getDatabase().setTransactionSuccessful();
+	}
+
+	public boolean inTransaction() {
+		return this.getDatabase().inTransaction();
+	}
+
+	public void endTransaction() {
+		this.getDatabase().endTransaction();
 	}
 
 	<E extends Model> void bind(SQLiteStatement statement, int index, E model, Field field) {
