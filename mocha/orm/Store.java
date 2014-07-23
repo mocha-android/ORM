@@ -94,6 +94,10 @@ public class Store {
 		return fetchRequest.getQuery(this).execute();
 	}
 
+	<E extends Model> List<E> execute(FetchRequest<E> fetchRequest, String sectionProperty, List<List<Integer>> sectionOffsets) {
+		return fetchRequest.getQuery(this).execute(sectionProperty, sectionOffsets);
+	}
+
 	public <E extends Model> E first(FetchRequest<E> fetchRequest) {
 		return Lists.first(this.execute(fetchRequest));
 	}

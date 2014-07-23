@@ -144,13 +144,17 @@ class FetchRequestQuery <E extends Model> extends MObject implements Copying<Fet
 	}
 
 	public List<E> execute() {
+		return this.execute(null, null);
+	}
+
+	public List<E> execute(String sectionProperty, List<List<Integer>> sectionOffsets) {
 		long fetchBatchSize = this.fetchRequest.getFetchBatchSize();
 
 		if(fetchBatchSize > 0 && fetchBatchSize < Long.MAX_VALUE) {
 			long fetchLimit = this.fetchRequest.getFetchLimit();
 
 			if(fetchLimit == 0 || fetchLimit < Long.MAX_VALUE || fetchLimit > fetchBatchSize) {
-				return new BatchedQueryResultList<>(this);
+				return new BatchedQueryResultList<>(this, sectionProperty, sectionOffsets);
 			}
 		}
 
@@ -180,12 +184,45 @@ class FetchRequestQuery <E extends Model> extends MObject implements Copying<Fet
 	}
 
 	List<E> parseCursor(Cursor cursor) {
+		return this.parseCursor(cursor, null, null);
+	}
+
+	private List<E> parseCursor(Cursor cursor, String sectionProperty, List<List<Integer>> sectionOffsets) {
 		List<E> list = new ArrayList<>(cursor.getCount());
 
 		if(cursor.moveToFirst()) {
+			final boolean determineSections = sectionProperty != null && sectionOffsets != null;
+			final int sectionColumnIndex;
+
+			String currentValue = null;
+			List<Integer> currentOffsets = null;
+
+			if(determineSections) {
+				sectionColumnIndex = cursor.getColumnIndex(this.modelEntity.getColumnForFieldName(sectionProperty));
+			} else {
+				sectionColumnIndex = -1;
+			}
+
 			do {
 				E model = this.modelEntity.parseCursor(cursor, this.selectedColumns, true);
 				list.add(model);
+
+				if(determineSections) {
+					String value = cursor.getString(sectionColumnIndex);
+
+					if(value == null) {
+						value = "";
+					}
+
+					if(currentValue == null || !value.equals(currentValue)) {
+						currentOffsets = new ArrayList<>();
+						sectionOffsets.add(currentOffsets);
+
+						currentValue = value;
+					}
+
+					currentOffsets.add(cursor.getPosition());
+				}
 			} while (cursor.moveToNext());
 		}
 

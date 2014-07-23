@@ -18,58 +18,45 @@ class BatchedQueryResultList<E extends Model> extends MObject implements List<E>
 	private FetchRequestQuery<E> fetchRequestQuery;
 
 	public BatchedQueryResultList(FetchRequestQuery<E> fetchRequestQuery) {
-		this(fetchRequestQuery, null);
+		this(fetchRequestQuery, null, null);
 	}
 
-	public BatchedQueryResultList(FetchRequestQuery<E> fetchRequestQuery, List<List<Integer>> groupOffsets) {
+	public BatchedQueryResultList(FetchRequestQuery<E> fetchRequestQuery, String sectionProperty, List<List<Integer>> sectionOffsets) {
 		this.batchSize = fetchRequestQuery.fetchRequest.getFetchBatchSize();
 		this.primaryKeys = new ArrayList<>();
 		this.store = fetchRequestQuery.store;
 		this.fetchRequestQuery = fetchRequestQuery;
 
-		String[] propertiesToGroupBy = fetchRequestQuery.fetchRequest.getPropertiesToGroupBy();
-		boolean useGrouping = propertiesToGroupBy != null && propertiesToGroupBy.length > 0;
-		List<String> columns = new ArrayList<>();
-		columns.add(fetchRequestQuery.table + "." + ModelEntity.PRIMARY_KEY_COLUMN);
+		final boolean determineSections = sectionProperty != null && sectionOffsets != null;
 
-		if(useGrouping) {
-			for(String property : propertiesToGroupBy) {
-				columns.add(fetchRequestQuery.table + "." + fetchRequestQuery.modelEntity.getColumnForFieldName(property));
-			}
+		String[] columns = new String[determineSections ? 2 : 1];
+		columns[0] = fetchRequestQuery.table + "." + ModelEntity.PRIMARY_KEY_COLUMN;
+
+		if(determineSections) {
+			columns[1] = fetchRequestQuery.table + "." + fetchRequestQuery.modelEntity.getColumnForFieldName(sectionProperty);
 		}
 
-		Map<Object,Integer> groupIndexes = !useGrouping ? null : new HashMap<Object, Integer>();
-		Object currentValue = null;
+		String currentValue = null;
 		List<Integer> currentOffsets = null;
 
-		String[] columnsArray = columns.toArray(new String[columns.size()]);
-		Cursor cursor = fetchRequestQuery.execute(columnsArray, fetchRequestQuery.fetchRequest.getFetchLimit(), fetchRequestQuery.fetchRequest.getFetchOffset(), true);
+		Cursor cursor = fetchRequestQuery.execute(columns, fetchRequestQuery.fetchRequest.getFetchLimit(), fetchRequestQuery.fetchRequest.getFetchOffset(), true);
 
 		if(cursor.moveToFirst()) {
 			do {
 				this.primaryKeys.add(cursor.getLong(0));
 
-				if(useGrouping) {
-					Object value = cursor.getString(1);
+				if(determineSections) {
+					String value = cursor.getString(1);
 
-					if(value == null) continue;
-
-					if(currentValue == null || !value.equals(currentValue)) {
-						Integer index = groupIndexes.get(value);
-
-						if(index != null) {
-							currentOffsets = groupOffsets.get(index);
-						} else {
-							currentOffsets = null;
-						}
-
-						currentValue = value;
+					if(value == null) {
+						value = "";
 					}
 
-					if(currentOffsets == null) {
+					if(currentValue == null || !value.equals(currentValue)) {
 						currentOffsets = new ArrayList<>();
-						groupIndexes.put(value, groupOffsets.size());
-						groupOffsets.add(currentOffsets);
+						sectionOffsets.add(currentOffsets);
+
+						currentValue = value;
 					}
 
 					currentOffsets.add(cursor.getPosition());
