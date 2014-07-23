@@ -91,6 +91,10 @@ public abstract class Model extends MObject {
 		return "primaryKey=" + this.primaryKey;
 	}
 
+	public ModelEntity getModelEntity() {
+		return this.modelEntity;
+	}
+
 	static Field getPrimaryKeyField() {
 		try {
 			return Model.class.getDeclaredField("primaryKey");

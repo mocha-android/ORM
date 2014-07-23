@@ -17,7 +17,7 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
 import java.util.*;
 
-class ModelEntity <E extends Model> extends MObject {
+public final class ModelEntity <E extends Model> extends MObject {
 	final Store store;
 	final Class<E> modelClass;
 	final String table;
@@ -36,7 +36,7 @@ class ModelEntity <E extends Model> extends MObject {
 	private SQLiteStatement updateStatement;
 	private SQLiteStatement deleteStatement;
 
-	public ModelEntity(Store store, Class<E> modelClass) {
+	ModelEntity(Store store, Class<E> modelClass) {
 		this.store = store;
 		this.modelClass = modelClass;
 		this.table = "Z" + modelClass.getSimpleName().toUpperCase();
@@ -96,7 +96,7 @@ class ModelEntity <E extends Model> extends MObject {
 		this.columnToFieldMap = Collections.unmodifiableMap(this.columnToFieldMap);
 	}
 
-	public void create(SQLiteDatabase database) {
+	void create(SQLiteDatabase database) {
 		StringBuilder builder = new StringBuilder("CREATE TABLE IF NOT EXISTS ");
 		builder.append("\"").append(this.table).append("\" (");
 		builder.append("\"").append(PRIMARY_KEY_COLUMN).append("\" ").append(ColumnType.INTEGER.name()).append(" PRIMARY KEY AUTOINCREMENT");
@@ -179,7 +179,7 @@ class ModelEntity <E extends Model> extends MObject {
 		return this.columns;
 	}
 
-	public void save(E model) {
+	void save(E model) {
 		if(model.primaryKey > 0) {
 			this.update(model);
 		} else {
@@ -263,7 +263,7 @@ class ModelEntity <E extends Model> extends MObject {
 		this.updateStatement.executeUpdateDelete();
 	}
 
-	public void delete(E model) {
+	void delete(E model) {
 		if(model.primaryKey <= 0) return;
 
 		if(this.deleteStatement == null) {
@@ -274,7 +274,7 @@ class ModelEntity <E extends Model> extends MObject {
 		this.deleteStatement.executeUpdateDelete();
 	}
 
-	public E parseCursor(Cursor cursor, List<String> selectedColumns, boolean eagerLoadHasOnes) {
+	E parseCursor(Cursor cursor, List<String> selectedColumns, boolean eagerLoadHasOnes) {
 		E model;
 
 		try {

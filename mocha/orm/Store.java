@@ -319,12 +319,14 @@ public class Store {
 		return this.transformers.get(field.getType());
 	}
 
-	ModelEntity getModelEntity(Model model) {
-		return this.getModelEntity(model.getClass());
+	public <M extends Model> ModelEntity<M> getModelEntity(M model) {
+		//noinspection unchecked
+		return (ModelEntity)this.getModelEntity(model.getClass());
 	}
 
-	ModelEntity getModelEntity(Class<? extends Model> modelClass) {
-		return this.entities.get(modelClass);
+	public <M extends Model> ModelEntity<M> getModelEntity(Class<M> modelClass) {
+		//noinspection unchecked
+		return (ModelEntity)this.entities.get(modelClass);
 	}
 
 
