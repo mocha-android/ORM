@@ -99,6 +99,15 @@ public class FetchRequest<E extends Model> implements Copying<FetchRequest<E>> {
 		this.query = query;
 	}
 
+	/**
+	 * Creates a new query instance if one doesn't exist, otherwise returns the existing query
+	 * @return Query
+	 */
+	public Query buildQuery() {
+		this.query = new Query();
+		return this.query;
+	}
+
 	public SortDescriptor[] getSortDescriptors() {
 		return this.sortDescriptors;
 	}

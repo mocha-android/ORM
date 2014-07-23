@@ -30,7 +30,8 @@ public class Query implements Copying<Query> {
 		LTE(" <= "),
 		GT(" > "),
 		GTE(" >= "),
-		IN(" IN ");
+		IN(" IN "),
+		LIKE(" LIKE ");
 
 		final String value;
 
@@ -165,6 +166,16 @@ public class Query implements Copying<Query> {
 
 	public Query orGte(String property, Object value) {
 		this.conditions.add(new SimpleComparisonCondition(CombineOperator.OR, property, ComparisonOperator.GTE, value));
+		return this;
+	}
+
+	public Query like(String property, Object value) {
+		this.conditions.add(new SimpleComparisonCondition(CombineOperator.AND, property, ComparisonOperator.LIKE, value));
+		return this;
+	}
+
+	public Query orLike(String property, Object value) {
+		this.conditions.add(new SimpleComparisonCondition(CombineOperator.OR, property, ComparisonOperator.LIKE, value));
 		return this;
 	}
 
