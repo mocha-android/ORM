@@ -27,8 +27,6 @@ class BatchedQueryResultList<E extends Model> extends MObject implements List<E>
 		this.store = fetchRequestQuery.store;
 		this.fetchRequestQuery = fetchRequestQuery;
 
-		MLog(LogLevel.WTF, "Created batched result list with size: " + this.batchSize);
-
 		String[] propertiesToGroupBy = fetchRequestQuery.fetchRequest.getPropertiesToGroupBy();
 		boolean useGrouping = propertiesToGroupBy != null && propertiesToGroupBy.length > 0;
 		List<String> columns = new ArrayList<>();
@@ -80,8 +78,6 @@ class BatchedQueryResultList<E extends Model> extends MObject implements List<E>
 		}
 
 		cursor.close();
-
-		MLog(LogLevel.WTF, "Fetched primary keys for batch: " + this.primaryKeys.size());
 
 		this.models = new Model[this.primaryKeys.size()];
 	}
@@ -219,7 +215,7 @@ class BatchedQueryResultList<E extends Model> extends MObject implements List<E>
 		List<Long> ids;
 
 		if(start == end) {
-			ids = new ArrayList<Long>();
+			ids = new ArrayList<>();
 			ids.add(this.primaryKeys.get(start));
 		} else {
 			ids = this.primaryKeys.subList(start, end);

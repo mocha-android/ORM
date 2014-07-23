@@ -177,7 +177,6 @@ class FetchRequestQuery <E extends Model> extends MObject implements Copying<Fet
 
 	List<E> parseCursor(Cursor cursor) {
 		List<E> list = new ArrayList<>(cursor.getCount());
-		MObject.MLog(MObject.LogLevel.WTF, "Processing cursor of size: " + cursor.getCount());
 
 		if(cursor.moveToFirst()) {
 			do {
@@ -187,8 +186,6 @@ class FetchRequestQuery <E extends Model> extends MObject implements Copying<Fet
 		}
 
 		cursor.close();
-
-		MObject.MLog(MObject.LogLevel.WTF, "Finished processing cursor.");
 
 		if(this.fetchRequest.hasRelationsNeedingPrefetching()) {
 			//noinspection unchecked
