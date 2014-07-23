@@ -50,6 +50,12 @@ public abstract class Model extends MObject {
 		this.hasOne.put(foreignKey, model);
 	}
 
+	protected void clearHasOneCache(String foreignKey) {
+		if(this.hasOne != null) {
+			this.hasOne.remove(foreignKey);
+		}
+	}
+
 	protected <E extends Model> List<E> hasMany(Class<E> modelClass, String foreignKey) {
 		if(this.hasMany == null) {
 			this.hasMany = new HashMap<>();
@@ -71,6 +77,22 @@ public abstract class Model extends MObject {
 		}
 
 		this.hasMany.put(foreignKey, models);
+	}
+
+	protected void clearHasManyCache(String foreignKey) {
+		if(this.hasMany != null) {
+			this.hasMany.remove(foreignKey);
+		}
+	}
+
+	protected <E extends Model> void deleteHasMany(Class<E> modelClass, String foreignKey) {
+		if(this.primaryKey == 0) return;
+
+		for(Model m : this.hasMany(modelClass, foreignKey)) {
+			m.delete();
+		}
+
+		this.clearHasManyCache(foreignKey);
 	}
 
 	Object getValue(String fieldName) {
