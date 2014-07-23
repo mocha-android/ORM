@@ -5,7 +5,6 @@
  */
 package mocha.orm;
 
-
 import mocha.foundation.Copying;
 import mocha.foundation.SortDescriptor;
 

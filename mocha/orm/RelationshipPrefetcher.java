@@ -1,7 +1,7 @@
 /**
  *  @author Shaun
  *  @date 7/22/14
- *  @copyright 2014 TV Guide, Inc. All rights reserved.
+ *  @copyright 2014 Mocha. All rights reserved.
  */
 package mocha.orm;
 
@@ -60,11 +60,12 @@ final class RelationshipPrefetcher <E extends Model> {
 	}
 
 	private void prefetchHasOne(FetchRequest.Relation relation) {
-		@SuppressWarnings("unchecked") ModelEntity<Model> relationEntity = this.store.getModelEntity(relation.relationClass);
+		ModelEntity relationEntity = this.store.getModelEntity(relation.relationClass);
 		Query query = (new Query()).in(relation.relationName, this.ids);
 		Pair<String, List<String>> conditions = query.compile(modelEntity, modelEntity.table);
 		String[] whereArgs = conditions.second.toArray(new String[conditions.second.size()]);
 
+		//noinspection unchecked
 		List<String> columns = relationEntity.getColumns();
 		String[] columnsArray = columns.toArray(new String[columns.size()]);
 
@@ -103,11 +104,12 @@ final class RelationshipPrefetcher <E extends Model> {
 	}
 
 	private void prefetchHasMany(FetchRequest.Relation relation, List<E> list) {
-		@SuppressWarnings("unchecked") ModelEntity<Model> relationEntity = this.store.getModelEntity(relation.relationClass);
+		ModelEntity relationEntity = this.store.getModelEntity(relation.relationClass);
 		Query query1 = (new Query()).in(relation.relationName, ids);
 		Pair<String, List<String>> conditions = query1.compile(modelEntity, modelEntity.table);
 		String[] whereArgs = conditions.second.toArray(new String[conditions.second.size()]);
 
+		//noinspection unchecked
 		List<String> columns = relationEntity.getColumns();
 		String[] columnsArray = columns.toArray(new String[columns.size()]);
 
