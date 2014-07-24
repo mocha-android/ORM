@@ -18,11 +18,13 @@ final class RelationshipPrefetcher <E extends Model> {
 	private final ModelEntity modelEntity;
 	private final FetchRequest<E> fetchRequest;
 	private final Store store;
+	private final FetchContext context;
 
 	private Map<Long, E> keyedModels = new HashMap<>();
 	private Long[] ids;
 
-	RelationshipPrefetcher(Class<E> modelClass, FetchRequest<E> fetchRequest, Store store) {
+	RelationshipPrefetcher(FetchContext context, Class<E> modelClass, FetchRequest<E> fetchRequest, Store store) {
+		this.context = context;
 		this.modelClass = modelClass;
 		this.fetchRequest = fetchRequest;
 		this.store = store;
@@ -78,7 +80,7 @@ final class RelationshipPrefetcher <E extends Model> {
 			int relationIndex = relationCursor.getColumnIndex(relationColumn);
 
 			do {
-				Model model = relationEntity.parseCursor(relationCursor, columns, false);
+				Model model = relationEntity.parseCursor(relationCursor, this.context, columns, false);
 				Model parent = remainingModels.remove(relationCursor.getLong(relationIndex));
 
 				if (parent != null) {
@@ -126,7 +128,7 @@ final class RelationshipPrefetcher <E extends Model> {
 			Model activeModel = null;
 
 			do {
-				Model model = relationEntity.parseCursor(relationCursor, columns, false);
+				Model model = relationEntity.parseCursor(relationCursor, this.context, columns, false);
 				final long foreignId = relationCursor.getLong(relationIndex);
 
 				// Check if we match or if we've hit a new group

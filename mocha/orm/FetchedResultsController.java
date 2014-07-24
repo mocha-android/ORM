@@ -80,7 +80,7 @@ public class FetchedResultsController <M extends Model> extends MObject {
 	public void execute() {
 		this.sections = new ArrayList<>();
 		List<List<Integer>> sectionOffsets = this.sectionPropertyName == null ? null : new ArrayList<List<Integer>>();
-		this.fetchedObjects = this.store.execute(this.fetchRequest, this.sectionPropertyName, sectionOffsets);
+		this.fetchedObjects = this.store.execute(this.fetchRequest, new FetchContext(), this.sectionPropertyName, sectionOffsets);
 
 		if(this.sectionPropertyName != null && sectionOffsets != null) {
 			for(List<Integer> offsets : sectionOffsets) {

@@ -143,11 +143,11 @@ class FetchRequestQuery <E extends Model> extends MObject implements Copying<Fet
 		this.store.getDatabase().delete(this.table, this.selection, this.selectionArgs);
 	}
 
-	public List<E> execute() {
-		return this.execute(null, null);
+	public List<E> execute(FetchContext context) {
+		return this.execute(context, null, null);
 	}
 
-	public List<E> execute(String sectionProperty, List<List<Integer>> sectionOffsets) {
+	public List<E> execute(FetchContext context, String sectionProperty, List<List<Integer>> sectionOffsets) {
 		long fetchBatchSize = this.fetchRequest.getFetchBatchSize();
 
 		if(fetchBatchSize > 0 && fetchBatchSize < Long.MAX_VALUE) {
@@ -158,11 +158,11 @@ class FetchRequestQuery <E extends Model> extends MObject implements Copying<Fet
 			}
 		}
 
-		return this.execute(this.fetchRequest.getFetchLimit(), this.fetchRequest.getFetchOffset());
+		return this.execute(context, this.fetchRequest.getFetchLimit(), this.fetchRequest.getFetchOffset());
 	}
 
-	private List<E> execute(long limit, long offset) {
-		return this.parseCursor(this.execute(this.columns, limit, offset, true));
+	private List<E> execute(FetchContext context, long limit, long offset) {
+		return this.parseCursor(this.execute(this.columns, limit, offset, true), context);
 	}
 
 
@@ -183,11 +183,11 @@ class FetchRequestQuery <E extends Model> extends MObject implements Copying<Fet
 		return this.store.getDatabase().query(this.distinct, this.table, columns, this.selection, this.selectionArgs, this.groupBy, this.having, orderBy, limitString);
 	}
 
-	List<E> parseCursor(Cursor cursor) {
-		return this.parseCursor(cursor, null, null);
+	List<E> parseCursor(Cursor cursor, FetchContext context) {
+		return this.parseCursor(cursor, context, null, null);
 	}
 
-	private List<E> parseCursor(Cursor cursor, String sectionProperty, List<List<Integer>> sectionOffsets) {
+	private List<E> parseCursor(Cursor cursor, FetchContext context, String sectionProperty, List<List<Integer>> sectionOffsets) {
 		List<E> list = new ArrayList<>(cursor.getCount());
 
 		if(cursor.moveToFirst()) {
@@ -204,7 +204,7 @@ class FetchRequestQuery <E extends Model> extends MObject implements Copying<Fet
 			}
 
 			do {
-				E model = this.modelEntity.parseCursor(cursor, this.selectedColumns, true);
+				E model = this.modelEntity.parseCursor(cursor, context, this.selectedColumns, true);
 				list.add(model);
 
 				if(determineSections) {
@@ -230,7 +230,7 @@ class FetchRequestQuery <E extends Model> extends MObject implements Copying<Fet
 
 		if(this.fetchRequest.hasRelationsNeedingPrefetching()) {
 			//noinspection unchecked
-			RelationshipPrefetcher prefetcher = new RelationshipPrefetcher(this.modelEntity.modelClass, this.fetchRequest, this.store);
+			RelationshipPrefetcher prefetcher = new RelationshipPrefetcher(context, this.modelEntity.modelClass, this.fetchRequest, this.store);
 
 			//noinspection unchecked
 			prefetcher.prefetchRelationships(list);

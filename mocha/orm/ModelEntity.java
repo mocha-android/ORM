@@ -8,20 +8,18 @@ package mocha.orm;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteStatement;
-import android.util.Pair;
 import mocha.foundation.MObject;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
-import java.lang.reflect.ParameterizedType;
 import java.util.*;
 
 public final class ModelEntity <E extends Model> extends MObject {
 	final Store store;
 	final Class<E> modelClass;
 	final String table;
-	
+
 	private final Constructor<E> constructor;
 
 	private List<String> columns;
@@ -223,7 +221,7 @@ public final class ModelEntity <E extends Model> extends MObject {
 		if(model != null) {
 			int columnIndex = 0;
 			for (String column : this.columns) {
-				this.store.bind(this.insertStatement, ++columnIndex, model, this.columnToFieldMap.get(column));
+				StatementBinder.bind(this.store, this.insertStatement, ++columnIndex, model, this.columnToFieldMap.get(column));
 			}
 
 			model.primaryKey = this.insertStatement.executeInsert();
@@ -255,10 +253,10 @@ public final class ModelEntity <E extends Model> extends MObject {
 		int columnIndex = 0;
 
 		for(String column : this.columns) {
-			this.store.bind(this.updateStatement, ++columnIndex, model, this.columnToFieldMap.get(column));
+			StatementBinder.bind(this.store, this.updateStatement, ++columnIndex, model, this.columnToFieldMap.get(column));
 		}
 
-		this.store.bind(this.updateStatement, ++columnIndex, model, PRIMARY_KEY_FIELD);
+		StatementBinder.bind(this.store, this.updateStatement, ++columnIndex, model, PRIMARY_KEY_FIELD);
 
 		this.updateStatement.executeUpdateDelete();
 	}
@@ -274,7 +272,7 @@ public final class ModelEntity <E extends Model> extends MObject {
 		this.deleteStatement.executeUpdateDelete();
 	}
 
-	E parseCursor(Cursor cursor, List<String> selectedColumns, boolean eagerLoadHasOnes) {
+	E parseCursor(Cursor cursor, FetchContext context, List<String> selectedColumns, boolean eagerLoadHasOnes) {
 		E model;
 
 		try {
@@ -283,13 +281,19 @@ public final class ModelEntity <E extends Model> extends MObject {
 			throw new RuntimeException(e);
 		}
 
+		boolean populatedPrimaryKey = false;
 		int selectedColumnsSize = selectedColumns.size();
 		for(int i = 0; i < selectedColumnsSize; i++) {
 			String column = selectedColumns.get(i);
 			Field field = this.columnToFieldMap.get(column);
 
 			if(field != null) {
-				this.store.setField(model, field, cursor, i, eagerLoadHasOnes);
+				this.store.setField(context, model, field, cursor, i, eagerLoadHasOnes);
+			}
+
+			if(!populatedPrimaryKey && model.primaryKey > 0) {
+				context.add(model);
+				populatedPrimaryKey = true;
 			}
 		}
 
