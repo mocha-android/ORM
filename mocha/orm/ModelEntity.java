@@ -127,9 +127,6 @@ public final class ModelEntity <E extends Model> extends MObject {
 			}
 
 			if(Model.class.isAssignableFrom(field.getType())) {
-				@SuppressWarnings("unchecked")
-				ModelEntity entity = this.store.getModelEntity((Class<? extends Model>)field.getType());
-				builder.append(" REFERENCES ").append(entity.getTable()).append("(").append(PRIMARY_KEY_COLUMN).append(")");
 				index = Index.Direction.NONE;
 			} else if(field.isAnnotationPresent(Index.class)) {
 				index = field.getAnnotation(Index.class).value();

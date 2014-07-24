@@ -12,12 +12,14 @@ import android.database.sqlite.*;
 import mocha.foundation.Lists;
 import mocha.foundation.MObject;
 
+import java.io.File;
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class Store {
+public class Store extends MObject {
 	private Map<Class<? extends Model>, ModelEntity<? extends Model>> entities;
 	private Map<Class, Transformer> transformers;
 	private Map<Class<? extends Transformer>, Transformer> transformerInstances;
@@ -26,7 +28,23 @@ public class Store {
 	private int version;
 
 	public Store(Application application, String databaseName, int version) {
-		this(application.getDatabasePath(databaseName).getPath(), version);
+		this(application.getDatabasePath(databaseName), version);
+	}
+
+	public Store(File databaseFile, int version) {
+		this(databaseFile.getPath(), version);
+
+		// Works around an issue where the OS sometimes won't
+		// create the database directory in SQLiteDatabase.openOrCreateDatabase
+		// cause it to fail
+
+		File parent = databaseFile.getParentFile();
+
+		if(!parent.exists()) {
+			if(!parent.mkdirs()) {
+				MWarn("Could not create directory %s, this will likely lead to issues when opening the database.", parent);
+			}
+		}
 	}
 
 	public Store(String databasePath, int version) {
@@ -69,9 +87,9 @@ public class Store {
 		}
 	}
 
-	public void registerTransformer(Class<? extends Transformer> transformerClass) {
+	public Store registerTransformer(Class<? extends Transformer> transformerClass) {
 		if(this.transformerInstances.containsKey(transformerClass)) {
-			return;
+			return this;
 		}
 
 		Transformer transformer;
@@ -84,6 +102,8 @@ public class Store {
 
 		this.transformers.put(transformer.getValueClass(), transformer);
 		this.transformerInstances.put(transformerClass, transformer);
+
+		return this;
 	}
 
 	public <E extends Model> long count(FetchRequest<E> fetchRequest) {
@@ -141,15 +161,32 @@ public class Store {
 			this.database = SQLiteDatabase.openOrCreateDatabase(this.databasePath, null);
 			this.database.setForeignKeyConstraintsEnabled(true);
 
-			SQLiteStatement tableExistsStatement = this.compileStatement("SELECT COUNT(*) FROM \"sqlite_master\" WHERE \"type\" = ? AND \"name\" = ?");
-			tableExistsStatement.bindString(1, "table");
+			List<String> existingTables = new ArrayList<>();
+			{
+				Cursor cursor = this.database.rawQuery("SELECT \"name\" FROM \"sqlite_master\" WHERE \"type\" = ?", new String[] { "table" });
+				if (cursor.moveToFirst()) {
+					do {
+						existingTables.add(cursor.getString(0));
+					} while (cursor.moveToNext());
+				}
+				cursor.close();
+			}
 
+			boolean beganTransaction = false;
 			for(ModelEntity entity : this.entities.values()) {
-				tableExistsStatement.bindString(2, entity.getTable());
+				if(!existingTables.contains(entity.getTable())) {
+					if(!beganTransaction) {
+						this.database.beginTransaction();
+						beganTransaction = true;
+					}
 
-				if(tableExistsStatement.simpleQueryForLong() == 0) {
 					entity.create(this.database);
 				}
+			}
+
+			if(beganTransaction) {
+				this.database.setTransactionSuccessful();
+				this.database.endTransaction();
 			}
 		}
 
