@@ -74,8 +74,8 @@ public final class ModelEntity <E extends Model> extends MObject {
 		this.columnToFieldMap.put(PRIMARY_KEY_COLUMN, PRIMARY_KEY_FIELD);
 
 		for (Field field : fields) {
-			if (!Modifier.isPublic(field.getModifiers())) continue;
-			if (field.isAnnotationPresent(Transient.class)) continue;
+			int modifiers = field.getModifiers();
+			if (Modifier.isStatic(modifiers) || Modifier.isTransient(modifiers) || !Modifier.isPublic(modifiers)) continue;
 
 			if (field.isAnnotationPresent(Transformable.class)) {
 				this.store.registerTransformer(field.getAnnotation(Transformable.class).value());
@@ -154,7 +154,6 @@ public final class ModelEntity <E extends Model> extends MObject {
 
 		database.execSQL(builder.toString());
 
-
 		for(String index : indexes) {
 			database.execSQL(index);
 		}
@@ -165,6 +164,10 @@ public final class ModelEntity <E extends Model> extends MObject {
 	}
 
 	public String getColumnForFieldName(String fieldName) {
+		if(!this.fieldNameToColumnMap.containsKey(fieldName)) {
+			throw new RuntimeException(String.format("Field '%s' does not exist in %s.", fieldName, this.modelClass.getSimpleName()));
+		}
+
 		return this.fieldNameToColumnMap.get(fieldName);
 	}
 
