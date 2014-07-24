@@ -88,14 +88,14 @@ final class RelationshipPrefetcher <E extends Model> {
 						throw new RuntimeException(e);
 					}
 
-					parent.setHasOne(relation.relationName, model);
+					parent.setHasOne((Class)relation.relationClass, relation.relationName, model);
 				}
 			} while (relationCursor.moveToNext());
 		}
 
 		// Set any models without relationship values to null
 		for(Model model : remainingModels.values()) {
-			model.setHasOne(relation.relationName, null);
+			model.setHasOne(relation.relationClass, relation.relationName, null);
 		}
 
 		relationCursor.close();
@@ -133,7 +133,8 @@ final class RelationshipPrefetcher <E extends Model> {
 				if (foreignId != activeForeignId) {
 					if (activeModel != null) {
 						// New hit, we'll set cache now
-						activeModel.setHasMany(relation.relationName, Collections.unmodifiableList(many));
+						// noinspection unchecked
+						activeModel.setHasMany((Class)relation.relationClass, relation.relationName, Collections.unmodifiableList(many));
 					}
 
 					activeModel = null;
@@ -162,12 +163,13 @@ final class RelationshipPrefetcher <E extends Model> {
 
 			// Save the last model group
 			if (activeModel != null) {
-				activeModel.setHasMany(relation.relationName, Collections.unmodifiableList(many));
+				// noinspection unchecked
+				activeModel.setHasMany((Class)relation.relationClass, relation.relationName, Collections.unmodifiableList(many));
 			}
 
 			// Set any models without relationship values to empty
 			for(Model model : remainingModels.values()) {
-				model.setHasMany(relation.relationName, (List)Collections.emptyList());
+				model.setHasMany((Class)relation.relationClass, relation.relationName, (List)Collections.emptyList());
 			}
 		}
 

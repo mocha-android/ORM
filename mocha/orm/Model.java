@@ -32,22 +32,24 @@ public abstract class Model extends MObject {
 			this.hasOne = new HashMap<>();
 		}
 
-		if(!this.hasOne.containsKey(foreignKey)) {
+		final String cacheKey = getRelationshipCacheKey(modelClass, foreignKey);
+
+		if(!this.hasOne.containsKey(cacheKey)) {
 			FetchRequest<E> fetchRequest = new FetchRequest<>(modelClass);
 			fetchRequest.setQuery((new Query()).eq("this", this.getValue(foreignKey)));
 			fetchRequest.setFetchLimit(1);
-			this.hasOne.put(foreignKey, this.store.first(fetchRequest));
+			this.hasOne.put(cacheKey, this.store.first(fetchRequest));
 		}
 
-		return (E)this.hasOne.get(foreignKey);
+		return (E)this.hasOne.get(cacheKey);
 	}
 
-	<E extends Model> void setHasOne(String foreignKey, E model) {
+	<E extends Model> void setHasOne(Class<E> modelClass, String foreignKey, E model) {
 		if(this.hasOne == null) {
 			this.hasOne = new HashMap<>();
 		}
 
-		this.hasOne.put(foreignKey, model);
+		this.hasOne.put(getRelationshipCacheKey(modelClass, foreignKey), model);
 	}
 
 	protected void clearHasOneCache(String foreignKey) {
@@ -61,27 +63,29 @@ public abstract class Model extends MObject {
 			this.hasMany = new HashMap<>();
 		}
 
-		if(!this.hasMany.containsKey(foreignKey)) {
+		final String cacheKey = getRelationshipCacheKey(modelClass, foreignKey);
+
+		if(!this.hasMany.containsKey(cacheKey)) {
 			FetchRequest<E> fetchRequest = new FetchRequest<>(modelClass);
 			fetchRequest.setQuery((new Query()).eq(foreignKey, this.primaryKey));
-			this.hasMany.put(foreignKey, this.store.execute(fetchRequest));
+			this.hasMany.put(cacheKey, this.store.execute(fetchRequest));
 		}
 
 		//noinspection unchecked
-		return this.hasMany.get(foreignKey);
+		return this.hasMany.get(cacheKey);
 	}
 
-	<E extends Model> void setHasMany(String foreignKey, List<E> models) {
+	<E extends Model> void setHasMany(Class<E> modelClass, String foreignKey, List<E> models) {
 		if(this.hasMany == null) {
 			this.hasMany = new HashMap<>();
 		}
 
-		this.hasMany.put(foreignKey, models);
+		this.hasMany.put(getRelationshipCacheKey(modelClass, foreignKey), models);
 	}
 
-	protected void clearHasManyCache(String foreignKey) {
+	protected <E extends Model> void clearHasManyCache(Class<E> modelClass, String foreignKey) {
 		if(this.hasMany != null) {
-			this.hasMany.remove(foreignKey);
+			this.hasMany.remove(getRelationshipCacheKey(modelClass, foreignKey));
 		}
 	}
 
@@ -92,7 +96,11 @@ public abstract class Model extends MObject {
 			m.delete();
 		}
 
-		this.clearHasManyCache(foreignKey);
+		this.clearHasManyCache(modelClass, foreignKey);
+	}
+
+	private static final <E extends Model> String getRelationshipCacheKey(Class<E> modelClass, String foreignKey) {
+		return modelClass.getName() + foreignKey;
 	}
 
 	Object getValue(String fieldName) {
