@@ -7,9 +7,7 @@ package mocha.orm;
 
 import android.database.Cursor;
 import android.util.Pair;
-import mocha.foundation.Lists;
 import mocha.foundation.Maps;
-import mocha.foundation.SortDescriptor;
 
 import java.lang.reflect.Field;
 import java.util.*;
@@ -62,7 +60,7 @@ final class RelationshipPrefetcher <E extends Model> {
 	private void prefetchHasOne(FetchRequest.Relation relation) {
 		ModelEntity relationEntity = this.store.getModelEntity(relation.relationClass);
 		Query query = (new Query()).in(relation.relationName, this.ids);
-		Pair<String, List<String>> conditions = query.compile(modelEntity, modelEntity.table);
+		Pair<String, List<String>> conditions = query.compile(relationEntity, relationEntity.table);
 		String[] whereArgs = conditions.second.toArray(new String[conditions.second.size()]);
 
 		//noinspection unchecked
@@ -105,8 +103,8 @@ final class RelationshipPrefetcher <E extends Model> {
 
 	private void prefetchHasMany(FetchRequest.Relation relation, List<E> list) {
 		ModelEntity relationEntity = this.store.getModelEntity(relation.relationClass);
-		Query query1 = (new Query()).in(relation.relationName, ids);
-		Pair<String, List<String>> conditions = query1.compile(modelEntity, modelEntity.table);
+		Query query = (new Query()).in(relation.relationName, this.ids);
+		Pair<String, List<String>> conditions = query.compile(relationEntity, relationEntity.table);
 		String[] whereArgs = conditions.second.toArray(new String[conditions.second.size()]);
 
 		//noinspection unchecked
@@ -142,17 +140,17 @@ final class RelationshipPrefetcher <E extends Model> {
 					many = null;
 				}
 
+				// Reset everything if we don't have a last model
+				if (activeModel == null) {
+					activeModel = remainingModels.remove(foreignId);
+					many = new ArrayList<>();
+				}
+
 				// Establish the bidirectional relationships
 				try {
 					field.set(model, activeModel);
 				} catch (IllegalAccessException e) {
 					throw new RuntimeException(e);
-				}
-
-				// Reset everything if we don't have a last model
-				if (activeModel == null) {
-					activeModel = remainingModels.remove(foreignId);
-					many = new ArrayList<>();
 				}
 
 				// Push model
