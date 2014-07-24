@@ -305,7 +305,6 @@ public class Store extends MObject {
 				field.set(model, cursor.getBlob(columnIndex));
 			} else if (Model.class.isAssignableFrom(type)) {
 				if(eagerLoadHasOnes) {
-					MWarn("Eager loading %s to %s", type, model);
 					Model related = null;
 					long relatedPrimaryKey = cursor.getLong(columnIndex);
 

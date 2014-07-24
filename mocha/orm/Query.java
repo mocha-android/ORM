@@ -14,7 +14,7 @@ import java.util.List;
 
 public class Query implements Copying<Query> {
 	enum CombineOperator {
-		AND(" && "), OR(" || ");
+		AND(" AND "), OR(" OR ");
 
 		final String value;
 
