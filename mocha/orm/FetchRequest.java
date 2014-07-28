@@ -103,7 +103,10 @@ public class FetchRequest<E extends Model> implements Copying<FetchRequest<E>> {
 	 * @return Query
 	 */
 	public Query buildQuery() {
-		this.query = new Query();
+		if(this.query == null) {
+			this.query = new Query();
+		}
+
 		return this.query;
 	}
 
