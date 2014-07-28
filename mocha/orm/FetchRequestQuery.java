@@ -158,13 +158,12 @@ class FetchRequestQuery <E extends Model> extends MObject implements Copying<Fet
 			}
 		}
 
-		return this.execute(context, this.fetchRequest.getFetchLimit(), this.fetchRequest.getFetchOffset());
+		return this.execute(context, this.fetchRequest.getFetchLimit(), this.fetchRequest.getFetchOffset(), sectionProperty, sectionOffsets);
 	}
 
-	private List<E> execute(FetchContext context, long limit, long offset) {
-		return this.parseCursor(this.execute(this.columns, limit, offset, true), context);
+	private List<E> execute(FetchContext context, long limit, long offset, String sectionProperty, List<List<Integer>> sectionOffsets) {
+		return this.parseCursor(this.execute(this.columns, limit, offset, true), context, sectionProperty, sectionOffsets);
 	}
-
 
 	Cursor execute(String[] columns, long limit, long offset, boolean orderedCursor) {
 		String limitString = null;
