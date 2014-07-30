@@ -250,38 +250,41 @@ public class Store extends MObject {
 			if (transformer != null) {
 				Object value = null;
 
-				switch (transformer.getColumnType()) {
-					case INTEGER:
-						if(Long.class.isAssignableFrom(transformer.getTransformedValueClass())) {
-							//noinspection unchecked
-							value = transformer.getReverseTransformedValue(cursor.getLong(columnIndex));
-						} else {
-							//noinspection unchecked
-							value = transformer.getReverseTransformedValue(cursor.getInt(columnIndex));
-						}
+				if(!cursor.isNull(columnIndex)) {
+					switch (transformer.getColumnType()) {
+						case INTEGER:
+							if (Long.class.isAssignableFrom(transformer.getTransformedValueClass())) {
+								//noinspection unchecked
+								value = transformer.getReverseTransformedValue(cursor.getLong(columnIndex));
+							} else {
+								//noinspection unchecked
+								value = transformer.getReverseTransformedValue(cursor.getInt(columnIndex));
+							}
 
-						break;
-					case REAL:
-						if(Float.class.isAssignableFrom(transformer.getTransformedValueClass())) {
-							//noinspection unchecked
-							value = transformer.getReverseTransformedValue(cursor.getFloat(columnIndex));
-						} else {
-							//noinspection unchecked
-							value = transformer.getReverseTransformedValue(cursor.getDouble(columnIndex));
-						}
+							break;
+						case REAL:
+							if (Float.class.isAssignableFrom(transformer.getTransformedValueClass())) {
+								//noinspection unchecked
+								value = transformer.getReverseTransformedValue(cursor.getFloat(columnIndex));
+							} else {
+								//noinspection unchecked
+								value = transformer.getReverseTransformedValue(cursor.getDouble(columnIndex));
+							}
 
-						break;
-					case TEXT:
-						//noinspection unchecked
-						value = transformer.getReverseTransformedValue(cursor.getString(columnIndex));
-						break;
-					case BLOB:
-						//noinspection unchecked
-						value = transformer.getReverseTransformedValue(cursor.getBlob(columnIndex));
-						break;
+							break;
+						case TEXT:
+							//noinspection unchecked
+							value = transformer.getReverseTransformedValue(cursor.getString(columnIndex));
+							break;
+						case BLOB:
+							//noinspection unchecked
+							value = transformer.getReverseTransformedValue(cursor.getBlob(columnIndex));
+							break;
+					}
+
+					field.set(model, value);
 				}
 
-				field.set(model, value);
 				return;
 			}
 
