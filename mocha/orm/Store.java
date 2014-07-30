@@ -23,7 +23,7 @@ public class Store extends MObject {
 	private Map<Class<? extends Model>, ModelEntity<? extends Model>> entities;
 	private Map<Class, Transformer> transformers;
 	private Map<Class<? extends Transformer>, Transformer> transformerInstances;
-	private SQLiteDatabase database;
+	private volatile SQLiteDatabase database;
 	private String databasePath;
 	private int version;
 

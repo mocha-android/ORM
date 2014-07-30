@@ -221,7 +221,7 @@ class BatchedQueryResultList<E extends Model> extends MObject implements List<E>
 
 		selection.append(")");
 
-		List<E> models = this.fetchRequestQuery.parseCursor(this.store.getDatabase().query(this.fetchRequestQuery.table, this.fetchRequestQuery.columns, selection.toString(), selectionArgs, null, null, null), new FetchContext());
+		List<E> models = this.fetchRequestQuery.parseAndCloseCursor(this.store.getDatabase().query(this.fetchRequestQuery.table, this.fetchRequestQuery.columns, selection.toString(), selectionArgs, null, null, null), new FetchContext());
 
 		for(E model : models) {
 			// We're not sorting the query, so the cursor may not

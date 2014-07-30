@@ -60,6 +60,10 @@ class FetchRequestQuery <E extends Model> extends MObject implements Copying<Fet
 	}
 
 	private void compile() {
+		if(this.modelEntity == null) {
+			throw new RuntimeException("No model entity found for " + this.fetchRequest.getModelClass());
+		}
+
 		this.distinct = this.fetchRequest.isReturnsDistinctResults();
 		this.table = this.modelEntity.getTable();
 
@@ -162,7 +166,7 @@ class FetchRequestQuery <E extends Model> extends MObject implements Copying<Fet
 	}
 
 	private List<E> execute(FetchContext context, long limit, long offset, String sectionProperty, List<List<Integer>> sectionOffsets) {
-		return this.parseCursor(this.execute(this.columns, limit, offset, true), context, sectionProperty, sectionOffsets);
+		return this.parseAndCloseCursor(this.execute(this.columns, limit, offset, true), context, sectionProperty, sectionOffsets);
 	}
 
 	Cursor execute(String[] columns, long limit, long offset, boolean orderedCursor) {
@@ -182,11 +186,11 @@ class FetchRequestQuery <E extends Model> extends MObject implements Copying<Fet
 		return this.store.getDatabase().query(this.distinct, this.table, columns, this.selection, this.selectionArgs, this.groupBy, this.having, orderBy, limitString);
 	}
 
-	List<E> parseCursor(Cursor cursor, FetchContext context) {
-		return this.parseCursor(cursor, context, null, null);
+	List<E> parseAndCloseCursor(Cursor cursor, FetchContext context) {
+		return this.parseAndCloseCursor(cursor, context, null, null);
 	}
 
-	private List<E> parseCursor(Cursor cursor, FetchContext context, String sectionProperty, List<List<Integer>> sectionOffsets) {
+	private List<E> parseAndCloseCursor(Cursor cursor, FetchContext context, String sectionProperty, List<List<Integer>> sectionOffsets) {
 		List<E> list = new ArrayList<>(cursor.getCount());
 
 		if(cursor.moveToFirst()) {
