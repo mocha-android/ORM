@@ -167,7 +167,12 @@ public class Store extends MObject {
 	public SQLiteDatabase getDatabase() {
 		if(this.database == null) {
 			this.database = SQLiteDatabase.openOrCreateDatabase(this.databasePath, null);
-			this.database.setForeignKeyConstraintsEnabled(true);
+
+			try {
+				this.database.setForeignKeyConstraintsEnabled(true);
+			} catch(NoSuchMethodError ignore) {
+				// setForeignKeyConstraintsEnabled was added in API level 16
+			}
 
 			List<String> existingTables = new ArrayList<>();
 			{
