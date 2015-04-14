@@ -1,0 +1,11 @@
+gen/*
+.idea*
+.DS_Store
+out/*
+bin/*
+*.iml
+*.eml
+.classpath
+.project
+local.properties
+/build
